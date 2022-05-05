@@ -1,0 +1,26 @@
+Bot:
+  token: "ODU5NjgyOTU4OTk3OTc5MTQ2.YNwQJQ.seVZoH3DU8DP3sA1hGy8Ldj-w0w"
+  guild: '549595806009786388'
+
+MySQL:
+  address: 173.44.44.251
+  port: 3306
+  database: discordSync
+  username: discordSync
+  password: 'wxe6TClybmiIYQ90'
+
+GroupsMySQL:
+  address: 173.44.44.251
+  port: 3306
+  database: ranks
+  username: ranks
+  password: 'CUnyd344LxI0J3es'
+
+RankSync:
+  default: '802081204923793428'
+  vip: '591746951842889759'
+  vip+: '591746950777405453'
+  legend: '591746950114574340'
+  titan: '591746949653463051'
+  twisted: '591746948600692736'
+  Any: '797737410514780201'

@@ -1,0 +1,5 @@
+name: DiscordRoleSync
+version: 1.0
+main: pf.mrbutters.dev.dsync.DSync
+description: Sync MC and Discord!
+author: BUTTERFIELD8

@@ -1,0 +1,4 @@
+name: SHIELD
+version: 1.0
+main: net.twistedmc.shield.Main
+author: shastagrande
