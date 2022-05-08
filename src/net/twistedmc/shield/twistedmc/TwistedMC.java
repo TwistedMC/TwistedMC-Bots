@@ -19,12 +19,15 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public class TwistedMC extends ListenerAdapter {
 
@@ -165,13 +168,16 @@ public class TwistedMC extends ListenerAdapter {
           }
           if (event.getOption("command").getAsString().equalsIgnoreCase("lookup") || event.getOption("command").getAsString().equalsIgnoreCase("lup")) {
                 int count = Main.getSHIELDReportCount();
-                String countDesc = "**Total SHIELD Reports:** **`" + count + "`**\n\n";
+                StringBuilder sb = new StringBuilder();
+                sb.append("**Total SHIELD Reports:** **`").append(count).append("`**").append("\n\n");
+                List<String> reports = Main.getSHIELDReportList(10);
+                reports.stream().forEach(entry -> sb.append(entry));
                 EmbedBuilder emb = new EmbedBuilder();
                 emb.setTimestamp(new Date().toInstant());
                 emb.setTitle("Viewing SHIELD Statistics");
                 emb.setColor(new Color(51, 153, 204));
                 emb.setFooter("SHIELD Protection");
-                emb.setDescription(countDesc);
+                emb.setDescription(sb);
                 event.replyEmbeds(emb.build()).queue();
 
           }

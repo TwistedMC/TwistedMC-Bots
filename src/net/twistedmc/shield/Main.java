@@ -4,7 +4,6 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.twistedmc.servercommands.MessageCommand;
 import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
-import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -94,21 +93,24 @@ public final class Main extends Plugin {
        return Count;
     }
 
-    /*public static String[] getSHIELDReportList(int maxList) {
-        int count = getSHIELDReportCount();
-        if (count - maxList < 1) { maxList = count; }
+    public static List<String> getSHIELDReportList(int maxList) {
         List<String> list = new ArrayList<>();
         try {
             MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
             Statement statement = MySQL.openConnection().createStatement();
-            ResultSet result = statement.executeQuery("SELECT * FROM shieldReports WHERE 'id' ");
+            ResultSet result = statement.executeQuery("SELECT * FROM `shieldReports` ORDER BY `shieldReports`.`date` DESC LIMIT " + maxList);
+            int c = 0;
             while (result.next()) {
-                Count = result.getInt(1);
+                list.add("**ID:** `" + c + "` | **Report ID:** `" + result.getString("id") + "`\n");
             }
+            statement.close();
+            MySQL.getConnection().close();
+            return list;
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
         }
-    }*/
+        return list;
+    }
 
 
 
