@@ -37,6 +37,7 @@ public class TwistedMC extends ListenerAdapter {
     public TwistedMC(String token) {
         this.token = token;
     }
+    private static SubcommandData _1 = new SubcommandData("command","Choose what to do <VIEW/LOOKUP>");
 
     public void start(){
         try {
@@ -46,7 +47,8 @@ public class TwistedMC extends ListenerAdapter {
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
             jda.upsertCommand("shieldreport", "View a SHIELD report.")
-                    .addOption(OptionType.STRING,"command","Choose what to do <VIEW/LOOKUP>",true)
+                    .addSubcommands(_1)
+                    //.addOption(OptionType.STRING,"command","Choose what to do <VIEW/LOOKUP>",true)
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {

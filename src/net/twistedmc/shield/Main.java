@@ -101,7 +101,8 @@ public final class Main extends Plugin {
             ResultSet result = statement.executeQuery("SELECT * FROM `shieldReports` ORDER BY `shieldReports`.`date` DESC LIMIT " + maxList);
             int c = 0;
             while (result.next()) {
-                list.add("**ID:** `" + c + "` | **Report ID:** `" + result.getString("id") + "`\n");
+                list.add("**#" + (c + 1) + "** | **Report ID:** `" + result.getString("id") + "`\n");
+                c += 1;
             }
             statement.close();
             MySQL.getConnection().close();
