@@ -82,9 +82,9 @@ public final class Main extends Plugin {
        try {
            MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
            Statement statement = MySQL.openConnection().createStatement();
-           ResultSet result = statement.executeQuery("SELECT COUNTS(id) FROM shieldReports");
+           ResultSet result = statement.executeQuery("SELECT COUNTS(*) FROM `shieldReports`");
            while(result.next()){
-               Count = result.getInt(1);
+               Count = result.getInt("COUNT(*)");
            }
            statement.close();
            MySQL.getConnection().close();
