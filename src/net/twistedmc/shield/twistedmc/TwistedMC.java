@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.entities.Emoji;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
@@ -205,8 +206,8 @@ public class TwistedMC extends ListenerAdapter {
     }
 
 
-    //@Override
-    public void onMenuInteract(SelectMenuInteraction event) {
+ //   @Override
+    public void onMenuInteract(SelectMenuInteractionEvent event) {
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
             event.reply(event.getSelectedOptions().get(0).getLabel()).queue();
 
