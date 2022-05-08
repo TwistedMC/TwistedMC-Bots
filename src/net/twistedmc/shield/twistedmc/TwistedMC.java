@@ -4,12 +4,18 @@ package net.twistedmc.shield.twistedmc;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Emoji;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import org.jetbrains.annotations.NotNull;
@@ -17,12 +23,15 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public class TwistedMC extends ListenerAdapter {
 
@@ -40,7 +49,9 @@ public class TwistedMC extends ListenerAdapter {
             jda.addEventListener(this);
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
-            jda.upsertCommand("shieldreport", "View a SHIELD report.").addOption(OptionType.STRING, "id", "id of shield report", true).queue();
+            jda.upsertCommand("shieldreport", "View a SHIELD report.")
+                    .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
+            jda.upsertCommand("statistics","View different network statistics!").queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
             System.out.println("[SHIELD] Failed to start TwistedMC Bot!");
@@ -80,7 +91,6 @@ public class TwistedMC extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
         if (event.getName().equals("shieldreport")) {
-
             String id = event.getOption("id").getAsString();
 
             try {
@@ -136,7 +146,7 @@ public class TwistedMC extends ListenerAdapter {
                                             + "\nLocation: `" + location + "`"
                                             + "\n------------------"
                                             + "\nBanned for: `" + checkName + " (Type: " + type + ")" + "`"
-                                            + "\nDescription: `" + description + "`"
+                                            + "\nDescription: `" + description + " " + "`"
                                             + "\nViolations: `" + violations + "`"
                                             + "\nCheck Max Violations: `" + maxViolations + "`"
                                             + "\n------------------");
@@ -157,6 +167,113 @@ public class TwistedMC extends ListenerAdapter {
                 }
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
+            }
+        }
+        if (event.getName().equalsIgnoreCase("statistics")) {
+            SelectMenu menu = SelectMenu.create("menu:stats")
+                    .setPlaceholder("Select Statistic Choice")
+                    .setRequiredRange(1,1)
+                    .addOption("Accounts","stat-accs","Member Account Stats", Emoji.fromEmote("TwistedRank",Long.parseLong("970626693322641418"),false))
+                    .addOption("Bans","stat-bans","Banned Account Stats",Emoji.fromEmote("AdminRank",Long.parseLong("970626971052687370"),false))
+                    .addOption("Blacklists","stat-bl","Blacklisted Account Stats",Emoji.fromEmote("Blacklists",Long.parseLong("972955708016427039"),false))
+                    .addOption("SHIELD Reports","stat-sr","SHIELD Report Stats",Emoji.fromEmote("SHIELD",Long.parseLong("926049519538409492"),false))
+                    .addOption("Mutes","stat-mutes","Muted Account Stats",Emoji.fromEmote("ModRank",Long.parseLong("970626971228848149"),false))
+                    .build();
+            EmbedBuilder emb = new EmbedBuilder();
+            emb.setColor(new Color(51,153,204));
+            emb.setDescription("**Please select the statistic you wish to view!**");
+            emb.setTimestamp(new Date().toInstant());
+            emb.setFooter("TwistedMC");
+            event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
+
+        }
+    }
+
+
+
+    @Override
+    public void onSelectMenuInteraction(SelectMenuInteractionEvent event) {
+        if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
+            SelectMenu fakemenu = event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder(event.getSelectedOptions().get(0).getDescription() + " Selected").build();
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-sr")) {
+                int SRs = Main.getSHIELDReportCount();
+                StringBuilder sb = new StringBuilder();
+                sb.append("**Total SHIELD Reports:** **`").append(SRs).append("`**").append("\n\n__**Most Recent SHIELD Reports**__ \n");
+                List<String> reports = Main.getSHIELDReportList(10);
+                reports.stream().forEach(entry -> sb.append(entry));
+                EmbedBuilder emb = new EmbedBuilder();
+                emb.setTimestamp(new Date().toInstant());
+                emb.setTitle("<:SHIELD:926049519538409492> Viewing SHIELD Report Statistics");
+                emb.setColor(new Color(51, 153, 204));
+                emb.setFooter("SHIELD Protection");
+                emb.setDescription(sb);
+                event.replyEmbeds(emb.build()).setContent("Requested By: " + event.getUser().getAsMention()).queue();
+                event.editSelectMenu(fakemenu).queue();
+                return;
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-accs")) {
+                int Accs = Main.getStatisticCount("accounts");
+                List<String> AccountsData = Main.getRecentAccInfo("accounts");
+                StringBuilder accountsSB = new StringBuilder();
+                accountsSB.append("**Total Player Accounts:** **`").append(Accs).append("`**").append("\n\n__**Most Recent Player Accounts**__ \n");
+                EmbedBuilder accEmb = new EmbedBuilder();
+                AccountsData.stream().forEach(entry -> accountsSB.append(entry));
+                accEmb.setTimestamp(new Date().toInstant());
+                accEmb.setTitle("<:TwistedRank:970626693322641418> Viewing Player Account Statistics");
+                accEmb.setColor(new Color(51, 153, 204));
+                accEmb.setFooter("TwistedMC");
+                accEmb.setDescription(accountsSB);
+                event.replyEmbeds(accEmb.build()).setContent("Requested By: " + event.getUser().getAsMention()).queue();
+                event.editSelectMenu(fakemenu).queue();
+                return;
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-bans")) {
+                int Bans = Main.getStatisticCount("bans");
+                List<String> BansData = Main.getRecentAccInfo("bans");
+                StringBuilder bansSB = new StringBuilder();
+                bansSB.append("**Total Banned Players:** **`").append(Bans).append("`**").append("\n\n__**Most Recent Player Bans**__ \n");
+                EmbedBuilder banEmb = new EmbedBuilder();
+                BansData.stream().forEach(entry -> bansSB.append(entry));
+                banEmb.setTimestamp(new Date().toInstant());
+                banEmb.setTitle("<:AdminRank:970626971052687370> Viewing Banned Player Statistics");
+                banEmb.setColor(new Color(51, 153, 204));
+                banEmb.setFooter("TwistedMC");
+                banEmb.setDescription(bansSB);
+                event.replyEmbeds(banEmb.build()).setContent("Requested By: " + event.getUser().getAsMention()).queue();
+                event.editSelectMenu(fakemenu).queue();
+                return;
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-mutes")) {
+                int Mutes = Main.getStatisticCount("mutes");
+                List<String> MutesData = Main.getRecentAccInfo("mutes");
+                StringBuilder mutesSB = new StringBuilder();
+                mutesSB.append("**Total Muted Players:** **`").append(Mutes).append("`**").append("\n\n__**Most Recent Player Mutes**__ \n");
+                EmbedBuilder muteEmb = new EmbedBuilder();
+                MutesData.stream().forEach(entry -> mutesSB.append(entry));
+                muteEmb.setTimestamp(new Date().toInstant());
+                muteEmb.setTitle("<:ModRank:970626971228848149> Viewing Muted Player Statistics");
+                muteEmb.setColor(new Color(51, 153, 204));
+                muteEmb.setFooter("TwistedMC");
+                muteEmb.setDescription(mutesSB);
+                event.replyEmbeds(muteEmb.build()).setContent("Requested By: " + event.getUser().getAsMention()).queue();
+                event.editSelectMenu(fakemenu).queue();
+                return;
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-bl")) {
+                int BLs = Main.getStatisticCount("blacklists");
+                List<String> BlacklistData = Main.getRecentAccInfo("blacklists");
+                StringBuilder blSB = new StringBuilder();
+                blSB.append("**Total Banned Players:** **`").append(BLs).append("`**").append("\n\n__**Most Recent Player BlackLists**__ \n");
+                EmbedBuilder BLEmb = new EmbedBuilder();
+                BlacklistData.stream().forEach(entry -> blSB.append(entry));
+                BLEmb.setTimestamp(new Date().toInstant());
+                BLEmb.setTitle("<:Blacklists:972955708016427039> Viewing Blacklisted Player Statistics");
+                BLEmb.setColor(new Color(51, 153, 204));
+                BLEmb.setFooter("TwistedMC");
+                BLEmb.setDescription(blSB);
+                event.replyEmbeds(BLEmb.build()).setContent("Requested By: " + event.getUser().getAsMention()).queue();
+                event.editSelectMenu(fakemenu).queue();
+                return;
             }
         }
     }
