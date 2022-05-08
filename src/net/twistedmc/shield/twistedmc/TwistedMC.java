@@ -4,6 +4,7 @@ package net.twistedmc.shield.twistedmc;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Emoji;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -12,6 +13,8 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +40,6 @@ public class TwistedMC extends ListenerAdapter {
     public TwistedMC(String token) {
         this.token = token;
     }
-    private static SubcommandData _1 = new SubcommandData("command","Choose what to do <VIEW/LOOKUP>");
 
     public void start(){
         try {
@@ -47,9 +49,9 @@ public class TwistedMC extends ListenerAdapter {
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
             jda.upsertCommand("shieldreport", "View a SHIELD report.")
-                    .addSubcommands(_1)
-                    //.addOption(OptionType.STRING,"command","Choose what to do <VIEW/LOOKUP>",true)
+                    .addOption(OptionType.STRING,"command","Choose what to do <VIEW/LOOKUP>",true)
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
+            jda.upsertCommand("statistics","View different network statistics!").queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
             System.out.println("[SHIELD] Failed to start TwistedMC Bot!");
@@ -184,6 +186,27 @@ public class TwistedMC extends ListenerAdapter {
 
           }
         }
+        if (event.getName().equalsIgnoreCase("statistics")) {
+            SelectMenu menu = SelectMenu.create("menu:stats")
+                    .setPlaceholder("Select Statistic Choice")
+                    .setRequiredRange(1,1)
+                    .addOption("Accounts","stat-accs","Member Account Stats", Emoji.fromEmote("TwistedRank",Long.parseLong("970626693322641418"),false))
+                    .addOption("Bans","stat-bans","Banned Account Stats",Emoji.fromEmote("AdminRank",Long.parseLong("970626971052687370"),false))
+                    .addOption("Blacklists","stat-bl","Blacklisted Account Stats",Emoji.fromUnicode("\uD83D\uDEAB"))
+                    .addOption("Mutes","stat-mutes","Muted Account Stats",Emoji.fromEmote("ModRank",Long.parseLong("970626971228848149"),false))
+                    .build();
+            EmbedBuilder emb = new EmbedBuilder();
+            emb.setColor(new Color(51,153,204));
+            emb.setDescription("__**Please select the statistic you wish to view!**__");
+            emb.setTimestamp(new Date().toInstant());
+            event.replyEmbeds(emb.build()).addActionRow(menu).queue();
+
+        }
+    }
+
+    @Override
+    public void onMenuInteract(SelectMenuInteraction event) {
+
     }
 
 }
