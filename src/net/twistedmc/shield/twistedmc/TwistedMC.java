@@ -194,6 +194,7 @@ public class TwistedMC extends ListenerAdapter {
                     .addOption("Accounts","stat-accs","Member Account Stats", Emoji.fromEmote("TwistedRank",Long.parseLong("970626693322641418"),false))
                     .addOption("Bans","stat-bans","Banned Account Stats",Emoji.fromEmote("AdminRank",Long.parseLong("970626971052687370"),false))
                     .addOption("Blacklists","stat-bl","Blacklisted Account Stats",Emoji.fromUnicode("\uD83D\uDEAB"))
+                    .addOption("SHIELD Reports","stat-sr","SHIELD Report Stats",Emoji.fromEmote("SHIELD",Long.parseLong("926049519538409492"),false))
                     .addOption("Mutes","stat-mutes","Muted Account Stats",Emoji.fromEmote("ModRank",Long.parseLong("970626971228848149"),false))
                     .build();
             EmbedBuilder emb = new EmbedBuilder();
@@ -207,11 +208,30 @@ public class TwistedMC extends ListenerAdapter {
     }
 
 
+
     @Override
     public void onSelectMenuInteraction(SelectMenuInteractionEvent event) {
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
-            event.getSelectMenu().withDisabled(true);
-            event.reply(event.getSelectedOptions().get(0).getLabel()).queue();
+            SelectMenu fakemenu = event.getSelectMenu().createCopy().setDisabled(true).build();
+            event.editSelectMenu(fakemenu);
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-sr")) {
+                int SRs = Main.getSHIELDReportCount();
+                StringBuilder sb = new StringBuilder();
+                sb.append("**Total SHIELD Reports:** **`").append(SRs).append("`**").append("\n\n");
+                List<String> reports = Main.getSHIELDReportList(10);
+                reports.stream().forEach(entry -> sb.append(entry));
+                EmbedBuilder emb = new EmbedBuilder();
+                emb.setTimestamp(new Date().toInstant());
+                emb.setTitle("<:SHIELD:926049519538409492> Viewing SHIELD Report Statistics");
+                emb.setColor(new Color(51, 153, 204));
+                emb.setFooter("SHIELD Protection");
+                emb.setDescription(sb);
+                event.replyEmbeds(emb.build()).queue();
+                return;
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-accs")) {
+                int Accs = Main.getStatisticCount("accounts");
+            }
         }
     }
 

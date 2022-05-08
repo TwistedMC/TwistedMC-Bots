@@ -183,6 +183,7 @@ public final class Main extends Plugin {
         }
     return 0;
     }
+
     public static String getUsername(String uuid) {
         try {
             MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
@@ -199,7 +200,23 @@ public final class Main extends Plugin {
         return null;
     }
 
+    public static List<String> getRecentAccInfo(String identifier) {
+        List<String> info = new ArrayList<>();
+        int IDCount = 0;
+        if (identifier.equalsIgnoreCase("bans")) {
 
+        }
+        if (identifier.equalsIgnoreCase("accounts")) {
+
+        }
+        if (identifier.equalsIgnoreCase("mutes")) {
+
+        }
+        if (identifier.equalsIgnoreCase("blacklists")) {
+
+        }
+        return null;
+    }
 
     public static boolean idExists(String id) throws SQLException, ClassNotFoundException {
         MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
