@@ -9,7 +9,9 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import org.jetbrains.annotations.NotNull;
@@ -41,7 +43,7 @@ public class TwistedMC extends ListenerAdapter {
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
             jda.upsertCommand("shieldreport", "View a SHIELD report.")
-                    .addOption(OptionType.SUB_COMMAND,"command","Choose what to do <VIEW/LOOKUP>",true)
+                    .addOption(OptionType.STRING,"command","Choose what to do <VIEW/LOOKUP>",true)
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
