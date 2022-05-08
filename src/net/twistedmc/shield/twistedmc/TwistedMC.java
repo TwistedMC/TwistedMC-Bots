@@ -206,8 +206,8 @@ public class TwistedMC extends ListenerAdapter {
     }
 
 
- //   @Override
-    public void onMenuInteract(SelectMenuInteractionEvent event) {
+    @Override
+    public void onSelectMenuInteraction(SelectMenuInteractionEvent event) {
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
             event.reply(event.getSelectedOptions().get(0).getLabel()).queue();
 
