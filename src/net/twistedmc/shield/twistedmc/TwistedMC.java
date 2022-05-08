@@ -40,7 +40,9 @@ public class TwistedMC extends ListenerAdapter {
             jda.addEventListener(this);
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
-            jda.upsertCommand("shieldreport", "View a SHIELD report.").addOption(OptionType.STRING, "id", "id of shield report", true).queue();
+            jda.upsertCommand("shieldreport", "View a SHIELD report.")
+                    .addOption(OptionType.SUB_COMMAND,"command","Choose what to do <VIEW/LOOKUP>",true)
+                    .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
             System.out.println("[SHIELD] Failed to start TwistedMC Bot!");
@@ -80,7 +82,7 @@ public class TwistedMC extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
         if (event.getName().equals("shieldreport")) {
-
+          if (event.getOption("command").getAsString().equalsIgnoreCase("view") || event.getOption("command").getAsString().equalsIgnoreCase("v")) {
             String id = event.getOption("id").getAsString();
 
             try {
@@ -136,7 +138,7 @@ public class TwistedMC extends ListenerAdapter {
                                             + "\nLocation: `" + location + "`"
                                             + "\n------------------"
                                             + "\nBanned for: `" + checkName + " (Type: " + type + ")" + "`"
-                                            + "\nDescription: `" + description + "`"
+                                            + "\nDescription: `" + description + " " + "`"
                                             + "\nViolations: `" + violations + "`"
                                             + "\nCheck Max Violations: `" + maxViolations + "`"
                                             + "\n------------------");
@@ -158,6 +160,19 @@ public class TwistedMC extends ListenerAdapter {
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
+          }
+          if (event.getOption("command").getAsString().equalsIgnoreCase("lookup") || event.getOption("command").getAsString().equalsIgnoreCase("lup")) {
+                int count = Main.getSHIELDReportCount();
+                String countDesc = "**Total SHIELD Reports:** **`" + count + "`**\n\n";
+                EmbedBuilder emb = new EmbedBuilder();
+                emb.setTimestamp(new Date().toInstant());
+                emb.setTitle("Viewing SHIELD Statistics");
+                emb.setColor(new Color(51, 153, 204));
+                emb.setFooter("SHIELD Protection");
+                emb.setDescription(countDesc);
+                event.replyEmbeds(emb.build()).queue();
+
+          }
         }
     }
 

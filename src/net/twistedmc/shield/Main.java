@@ -4,8 +4,11 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.twistedmc.servercommands.MessageCommand;
 import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 public final class Main extends Plugin {
@@ -73,6 +76,41 @@ public final class Main extends Plugin {
     public static Connection getConnection() {
         return connection;
     }
+
+    public static int getSHIELDReportCount() {
+        int Count = 0;
+       try {
+           MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+           Statement statement = MySQL.openConnection().createStatement();
+           ResultSet result = statement.executeQuery("SELECT COUNTS(id) FROM shieldReports");
+           while(result.next()){
+               Count = result.getInt(1);
+           }
+           statement.close();
+           MySQL.getConnection().close();
+       } catch (SQLException | ClassNotFoundException e) {
+           e.printStackTrace();
+       }
+       return Count;
+    }
+
+    /*public static String[] getSHIELDReportList(int maxList) {
+        int count = getSHIELDReportCount();
+        if (count - maxList < 1) { maxList = count; }
+        List<String> list = new ArrayList<>();
+        try {
+            MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+            Statement statement = MySQL.openConnection().createStatement();
+            ResultSet result = statement.executeQuery("SELECT * FROM shieldReports WHERE 'id' ");
+            while (result.next()) {
+                Count = result.getInt(1);
+            }
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }*/
+
+
 
     public static boolean idExists(String id) throws SQLException, ClassNotFoundException {
         MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
