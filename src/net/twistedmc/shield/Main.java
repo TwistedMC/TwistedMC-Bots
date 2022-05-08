@@ -6,6 +6,7 @@ import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
 
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -111,6 +112,91 @@ public final class Main extends Plugin {
             e.printStackTrace();
         }
         return list;
+    }
+
+    public static String convertDatestamp(long timestamp) {
+        SimpleDateFormat format = new SimpleDateFormat("MMM dd, yyyy hh:mma");
+        return format.format(new Date(timestamp));
+    }
+
+    public static int getStatisticCount(String identifier) {
+        int Count = 0;
+        if (identifier.equalsIgnoreCase("bans")) {
+            try {
+                MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+                Statement statement = MySQL.openConnection().createStatement();
+                ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM `accountbans`");
+                while(result.next()){
+                    Count = result.getInt("COUNT(*)");
+                }
+                statement.close();
+                MySQL.getConnection().close();
+            } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            return Count;
+        }
+        if (identifier.equalsIgnoreCase("accounts")) {
+            try {
+                MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+                Statement statement = MySQL.openConnection().createStatement();
+                ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM `accounts`");
+                while(result.next()){
+                    Count = result.getInt("COUNT(*)");
+                }
+                statement.close();
+                MySQL.getConnection().close();
+            } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            return Count;
+        }
+        if (identifier.equalsIgnoreCase("mutes")) {
+            try {
+                MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+                Statement statement = MySQL.openConnection().createStatement();
+                ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM `accountmutes`");
+                while(result.next()){
+                    Count = result.getInt("COUNT(*)");
+                }
+                statement.close();
+                MySQL.getConnection().close();
+            } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            return Count;
+        }
+        if (identifier.equalsIgnoreCase("blacklists")) {
+            try {
+                MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+                Statement statement = MySQL.openConnection().createStatement();
+                ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM `accountblacklists`");
+                while(result.next()){
+                    Count = result.getInt("COUNT(*)");
+                }
+                statement.close();
+                MySQL.getConnection().close();
+            } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            return Count;
+        }
+    return 0;
+    }
+    public static String getUsername(String uuid) {
+        try {
+            MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
+            Statement statement = MySQL.openConnection().createStatement();
+            ResultSet result = statement.executeQuery("SELECT * FROM `alts_users` WHERE uuid = '" + uuid + "'");
+            while(result.next()){
+                return result.getString("playername");
+            }
+            statement.close();
+            MySQL.getConnection().close();
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 

@@ -198,8 +198,9 @@ public class TwistedMC extends ListenerAdapter {
                     .build();
             EmbedBuilder emb = new EmbedBuilder();
             emb.setColor(new Color(51,153,204));
-            emb.setDescription("__**Please select the statistic you wish to view!**__");
+            emb.setDescription("**Please select the statistic you wish to view!**");
             emb.setTimestamp(new Date().toInstant());
+            emb.setFooter("TwistedMC");
             event.replyEmbeds(emb.build()).addActionRow(menu).queue();
 
         }
@@ -209,8 +210,8 @@ public class TwistedMC extends ListenerAdapter {
     @Override
     public void onSelectMenuInteraction(SelectMenuInteractionEvent event) {
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
+            event.getSelectMenu().withDisabled(true);
             event.reply(event.getSelectedOptions().get(0).getLabel()).queue();
-
         }
     }
 
