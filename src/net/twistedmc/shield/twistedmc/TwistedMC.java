@@ -204,9 +204,11 @@ public class TwistedMC extends ListenerAdapter {
         }
     }
 
-    //@Override
-    //public void onMenuInteract(SelectMenuInteraction event) {
-
-    //}
+    @Override
+    public void onMenuInteract(SelectMenuInteraction event) {
+        if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
+            event.reply(event.getSelectedOptions().get(0).getLabel()).queue();
+        }
+    }
 
 }
