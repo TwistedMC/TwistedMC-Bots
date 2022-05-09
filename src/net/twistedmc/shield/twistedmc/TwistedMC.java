@@ -91,6 +91,12 @@ public class TwistedMC extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
         if (event.getName().equals("shieldreport")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
             String id = event.getOption("id").getAsString();
 
             try {
@@ -173,6 +179,11 @@ public class TwistedMC extends ListenerAdapter {
             }
         }
         if (event.getName().equalsIgnoreCase("staffstatistics")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
 
             if (!event.getGuild().getId().equals("549595806009786388")) {
                 event.reply("You cannot use **/staffstatistics** in this guild!").setEphemeral(true).queue();

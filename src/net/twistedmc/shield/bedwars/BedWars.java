@@ -52,6 +52,11 @@ public class BedWars extends ListenerAdapter {
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
         if (event.getName().equals("bedwars")) {
 
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
             String player = event.getOption("player").getAsString();
 
             try {
