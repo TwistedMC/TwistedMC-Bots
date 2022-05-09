@@ -42,9 +42,11 @@ public class BedWars extends ListenerAdapter {
             jda.getPresence().setPresence(Activity.playing("BedWars.TwistedMC.Net"), false);
             jda.upsertCommand("bedwars", "View a player's Bed Wars stats.")
                     .addOption(OptionType.STRING, "player", "Player Username", true).queue();
+            jda.updateCommands().queue();;
             System.out.println("[SHIELD] Starting Bed Wars bot..");
         } catch (LoginException err) {
             System.out.println("[SHIELD] Failed to start Bed Wars Bot!");
+
         }
     }
 
@@ -64,7 +66,7 @@ public class BedWars extends ListenerAdapter {
                 int userCooldownTime = 2;
 
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("<:danger:869367070591189014> **HOLD UP!** Your guild is currently suspended from our Statistics bot due to abuse or spamming.\n\nIf you believe this was done in error, create a ticket below:\nhttps://twistedmc.net/tickets/create/").queue();
+                    event.reply("<:danger:869367070591189014> **HOLD UP!** This guild is currently suspended from using the Statistics bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket below:\nhttps://twistedmc.net/tickets/create/").queue();
                     return;
                 }
 
