@@ -51,7 +51,7 @@ public class TwistedMC extends ListenerAdapter {
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
             jda.upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
-            jda.upsertCommand("statistics","View different network statistics!").queue();
+            jda.upsertCommand("staffstatistics","View different network statistics!").queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
             System.out.println("[SHIELD] Failed to start TwistedMC Bot!");
@@ -94,7 +94,10 @@ public class TwistedMC extends ListenerAdapter {
             String id = event.getOption("id").getAsString();
 
             try {
-                if (!Main.idExists(id)) {
+                if (!event.getGuild().getId().equals("549595806009786388")) {
+                    event.reply("You cannot use **/shieldreport* in this guild!").setEphemeral(true).queue();
+                    return;
+                } else if (!Main.idExists(id)) {
                     event.reply("SHIELD Report with id **" + id + "** does not exist!").queue();
                     return;
                 } else {
@@ -169,23 +172,29 @@ public class TwistedMC extends ListenerAdapter {
                 e.printStackTrace();
             }
         }
-        if (event.getName().equalsIgnoreCase("statistics")) {
-            SelectMenu menu = SelectMenu.create("menu:stats")
-                    .setPlaceholder("Select Statistic Choice")
-                    .setRequiredRange(1,1)
-                    .addOption("Accounts","stat-accs","Member Account Stats", Emoji.fromEmote("TwistedRank",Long.parseLong("970626693322641418"),false))
-                    .addOption("Bans","stat-bans","Banned Account Stats",Emoji.fromEmote("AdminRank",Long.parseLong("970626971052687370"),false))
-                    .addOption("Blacklists","stat-bl","Blacklisted Account Stats",Emoji.fromEmote("Blacklists",Long.parseLong("972955708016427039"),false))
-                    .addOption("SHIELD Reports","stat-sr","SHIELD Report Stats",Emoji.fromEmote("SHIELD",Long.parseLong("926049519538409492"),false))
-                    .addOption("Mutes","stat-mutes","Muted Account Stats",Emoji.fromEmote("ModRank",Long.parseLong("970626971228848149"),false))
-                    .build();
-            EmbedBuilder emb = new EmbedBuilder();
-            emb.setColor(new Color(51,153,204));
-            emb.setDescription("**Please select the statistic you wish to view!**");
-            emb.setTimestamp(new Date().toInstant());
-            emb.setFooter("TwistedMC");
-            event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
+        if (event.getName().equalsIgnoreCase("staffstatistics")) {
 
+            if (!event.getGuild().getId().equals("549595806009786388")) {
+                event.reply("You cannot use **/staffstatistics** in this guild!").setEphemeral(true).queue();
+                return;
+            } else {
+
+                SelectMenu menu = SelectMenu.create("menu:stats")
+                        .setPlaceholder("Select Statistic Choice")
+                        .setRequiredRange(1, 1)
+                        .addOption("Accounts", "stat-accs", "Member Account Stats", Emoji.fromEmote("TwistedRank", Long.parseLong("970626693322641418"), false))
+                        .addOption("Bans", "stat-bans", "Banned Account Stats", Emoji.fromEmote("AdminRank", Long.parseLong("970626971052687370"), false))
+                        .addOption("Blacklists", "stat-bl", "Blacklisted Account Stats", Emoji.fromEmote("Blacklists", Long.parseLong("972955708016427039"), false))
+                        .addOption("SHIELD Reports", "stat-sr", "SHIELD Report Stats", Emoji.fromEmote("SHIELD", Long.parseLong("926049519538409492"), false))
+                        .addOption("Mutes", "stat-mutes", "Muted Account Stats", Emoji.fromEmote("ModRank", Long.parseLong("970626971228848149"), false))
+                        .build();
+                EmbedBuilder emb = new EmbedBuilder();
+                emb.setColor(new Color(51, 153, 204));
+                emb.setDescription("**Please select the statistic you wish to view!**");
+                emb.setTimestamp(new Date().toInstant());
+                emb.setFooter("TwistedMC");
+                event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
+            }
         }
     }
 
@@ -196,10 +205,24 @@ public class TwistedMC extends ListenerAdapter {
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:stats")) {
             SelectMenu fakemenu = event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder(event.getSelectedOptions().get(0).getDescription() + " Selected").build();
             if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-sr")) {
-                int SRs = Main.getSHIELDReportCount();
+                int SRs = 0;
+                try {
+                    SRs = Main.getSHIELDReportCount();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 StringBuilder sb = new StringBuilder();
                 sb.append("**Total SHIELD Reports:** **`").append(SRs).append("`**").append("\n\n__**Most Recent SHIELD Reports**__ \n");
-                List<String> reports = Main.getSHIELDReportList(10);
+                List<String> reports = null;
+                try {
+                    reports = Main.getSHIELDReportList(10);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 reports.stream().forEach(entry -> sb.append(entry));
                 EmbedBuilder emb = new EmbedBuilder();
                 emb.setTimestamp(new Date().toInstant());
@@ -212,8 +235,22 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
             if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-accs")) {
-                int Accs = Main.getStatisticCount("accounts");
-                List<String> AccountsData = Main.getRecentAccInfo("accounts");
+                int Accs = 0;
+                try {
+                    Accs = Main.getStatisticCount("accounts");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                List<String> AccountsData = null;
+                try {
+                    AccountsData = Main.getRecentAccInfo("accounts");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 StringBuilder accountsSB = new StringBuilder();
                 accountsSB.append("**Total Player Accounts:** **`").append(Accs).append("`**").append("\n\n__**Most Recent Player Accounts**__ \n");
                 EmbedBuilder accEmb = new EmbedBuilder();
@@ -228,8 +265,22 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
             if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-bans")) {
-                int Bans = Main.getStatisticCount("bans");
-                List<String> BansData = Main.getRecentAccInfo("bans");
+                int Bans = 0;
+                try {
+                    Bans = Main.getStatisticCount("bans");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                List<String> BansData = null;
+                try {
+                    BansData = Main.getRecentAccInfo("bans");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 StringBuilder bansSB = new StringBuilder();
                 bansSB.append("**Total Banned Players:** **`").append(Bans).append("`**").append("\n\n__**Most Recent Player Bans**__ \n");
                 EmbedBuilder banEmb = new EmbedBuilder();
@@ -244,8 +295,22 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
             if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-mutes")) {
-                int Mutes = Main.getStatisticCount("mutes");
-                List<String> MutesData = Main.getRecentAccInfo("mutes");
+                int Mutes = 0;
+                try {
+                    Mutes = Main.getStatisticCount("mutes");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                List<String> MutesData = null;
+                try {
+                    MutesData = Main.getRecentAccInfo("mutes");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 StringBuilder mutesSB = new StringBuilder();
                 mutesSB.append("**Total Muted Players:** **`").append(Mutes).append("`**").append("\n\n__**Most Recent Player Mutes**__ \n");
                 EmbedBuilder muteEmb = new EmbedBuilder();
@@ -260,8 +325,22 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
             if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("stat-bl")) {
-                int BLs = Main.getStatisticCount("blacklists");
-                List<String> BlacklistData = Main.getRecentAccInfo("blacklists");
+                int BLs = 0;
+                try {
+                    BLs = Main.getStatisticCount("blacklists");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                List<String> BlacklistData = null;
+                try {
+                    BlacklistData = Main.getRecentAccInfo("blacklists");
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
                 StringBuilder blSB = new StringBuilder();
                 blSB.append("**Total Banned Players:** **`").append(BLs).append("`**").append("\n\n__**Most Recent Player BlackLists**__ \n");
                 EmbedBuilder BLEmb = new EmbedBuilder();
