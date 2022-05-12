@@ -106,7 +106,7 @@ public class TwistedMC extends ListenerAdapter {
                     event.reply("You cannot use **/shieldreport** in this guild!").setEphemeral(true).queue();
                     return;
                 } else if (!Main.idExists(id)) {
-                    event.reply("SHIELD Report with id **" + id + "** does not exist!").queue();
+                    event.reply("SHIELD Report with id **" + id + "** does not exist!").setEphemeral(true).queue();
                     return;
                 } else {
 
@@ -182,7 +182,7 @@ public class TwistedMC extends ListenerAdapter {
         }
 
         if (!event.isFromGuild()) {
-            event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+            event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").setEphemeral(true).queue();
             return;
         }
 

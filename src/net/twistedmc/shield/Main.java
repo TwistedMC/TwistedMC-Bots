@@ -263,7 +263,7 @@ public final class Main extends Plugin {
                     String pID = result.getString("punishmentID");
                     long dateStamp = result.getLong("date");
                     String reason = result.getString("reason");
-                    String entry = "**#" + (IDCount +1) +"** | **`" + username + "`** (**ID:** `#" + pID+"` | **Date:** `"+Main.convertDatestamp(dateStamp)+ "`) - **Reason:** `"+reason+"`"   + "\n";
+                    String entry = "**#" + (IDCount +1) +"** | **`" + username + "`** (**ID:** `#" + pID+"` | **Date:** `"+Main.convertDatestamp(dateStamp)+ " EST`) - **Reason:** `"+reason+"`"   + "\n";
                     info.add(entry);
                     IDCount += 1;
                 }
@@ -289,7 +289,7 @@ public final class Main extends Plugin {
                     String username = Main.getUsername(result.getString("uuid"));
                     long dateStamp = result.getLong("firstLogin");
                     StringBuilder entry = new StringBuilder();
-                    entry.append("**#").append((IDCount +1)).append("** | **`").append(username).append("`** (**Date Joined:** `").append(Main.convertDatestamp(dateStamp)).append("`) ");
+                    entry.append("**#").append((IDCount +1)).append("** | **`").append(username).append("`** (**Date Joined:** `").append(Main.convertDatestamp(dateStamp)).append(" EST`) ");
                     entry.append("\n");
                     info.add(String.valueOf(entry));
                     IDCount += 1;
@@ -314,7 +314,7 @@ public final class Main extends Plugin {
                     String pID = result.getString("punishmentID");
                     long dateStamp = result.getLong("date");
                     String reason = result.getString("reason");
-                    String entry = "**#" + (IDCount +1) +"** | **`" + username + "`** (**ID:** `#" + pID+"` | **Date:** `"+Main.convertDatestamp(dateStamp)+ "`) - **Reason:** `"+reason+"`"   + "\n";
+                    String entry = "**#" + (IDCount +1) +"** | **`" + username + "`** (**ID:** `#" + pID+"` | **Date:** `"+Main.convertDatestamp(dateStamp)+ " EST`) - **Reason:** `"+reason+"`"   + "\n";
                     info.add(entry);
                     IDCount += 1;
                 }
@@ -341,7 +341,7 @@ public final class Main extends Plugin {
                     String pID = result.getString("punishmentID");
                     long dateStamp = result.getLong("date");
                     String reason = result.getString("reason");
-                    String entry = "**#" + (IDCount +1) +"** | **`" + username + "`** (**ID:** `#" + pID+"` | **Date:** `"+Main.convertDatestamp(dateStamp)+ "`) - **Reason:** `"+reason+"`"   + "\n";
+                    String entry = "**#" + (IDCount +1) +"** | **`" + username + "`** (**ID:** `#" + pID+"` | **Date:** `"+Main.convertDatestamp(dateStamp)+ " EST`) - **Reason:** `"+reason+"`"   + "\n";
                     info.add(entry);
                     IDCount += 1;
                 }

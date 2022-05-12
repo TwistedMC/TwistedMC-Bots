@@ -1,27 +1,26 @@
 package net.twistedmc.shield.bedwars;
 
-
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.md_5.bungee.BungeeCord;
-import net.md_5.bungee.api.ProxyServer;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
 public class BedWars extends ListenerAdapter {
 
@@ -55,7 +54,7 @@ public class BedWars extends ListenerAdapter {
         if (event.getName().equals("bedwars")) {
 
             if (!event.isFromGuild()) {
-                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").setEphemeral(true).queue();
                 return;
             }
 
@@ -66,7 +65,10 @@ public class BedWars extends ListenerAdapter {
                 int userCooldownTime = 2;
 
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("<:danger:869367070591189014> **HOLD UP!** This guild is currently suspended from using the Statistics bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket below:\nhttps://twistedmc.net/tickets/create/").queue();
+                    event.reply("<:danger:869367070591189014> **HOLD UP!** This guild is currently suspended from using the Statistics bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
+                                    "below:")
+                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/ticket_form_id=5/", "Submit a request"))
+                            .queue();
                     return;
                 }
 
@@ -90,14 +92,17 @@ public class BedWars extends ListenerAdapter {
                     addLog(event.getGuild().getIdLong(), event.getUser().getIdLong(), event.getCommandString(), format.format(d));
 
                     try {
+
+                        NumberFormat formatter = NumberFormat.getIntegerInstance();
+
                         EmbedBuilder bedwars = new EmbedBuilder();
                         bedwars.setTitle("Bed Wars Statistics for " + Main.getRealUsername(Objects.requireNonNull(event.getOption("player")).getAsString()));
                         bedwars.setDescription(
                                 "\nBed Wars Level: **" + getLevel(Objects.requireNonNull(event.getOption("player")).getAsString(), "level") + "**"
                                         + "\nProgress: **" + getLevel(Objects.requireNonNull(event.getOption("player")).getAsString(), "xp") + "**/**" + getLevel(Objects.requireNonNull(event.getOption("player")).getAsString(), "next_cost") + "**");
                         bedwars.addField("",
-                                "\nCoins: **" + "0" + "**"
-                                        + "\nSuper Votes: **" + "0" + "**"
+                                "\nCoins: **" + formatter.format(getCoins(Objects.requireNonNull(event.getOption("player")).getAsString())) + "**"
+                                        + "\nSuper Votes: **" + formatter.format(getSuperVotes(Objects.requireNonNull(event.getOption("player")).getAsString())) + "**"
                                         + "\nCosmetic Crates: **" + "0" + "**"
                                         + "\nIron: **" + "0" + "**"
                                         + "\nGold: **" + "0" + "**"
@@ -113,6 +118,8 @@ public class BedWars extends ListenerAdapter {
                                 "\nFKDR: **" + "0.00" + "**"
                                         + "\nWLR: **" + "0.00" + "**"
                                         + "\nBBLR: **" + "0.00" + "**", true);
+                        bedwars.addField("",
+                                "\nLast played: **" + "Never" + "**", false);
                         bedwars.setColor(new Color(51, 153, 204));
                         bedwars.setFooter("Play.TwistedMC.Net Statistics");
                         bedwars.setTimestamp(new Date().toInstant());
@@ -127,7 +134,7 @@ public class BedWars extends ListenerAdapter {
                         e.printStackTrace();
                     }
                 } else if (!Main.hasJoined(player)) {
-                    event.reply("We are sorry, but we cannot find a player with the username '**" + player + "**' in our database.").setEphemeral(true).queue();
+                    event.reply("We are sorry, but we cannot find a player with the username '**" + player + "**' in our database.").queue();
                 }
 
             } catch (SQLException e) {
@@ -217,6 +224,44 @@ public class BedWars extends ListenerAdapter {
             statement.close();
             MySQL.getConnection().close();
         }
+    }
+
+
+
+    public static int getSuperVotes(String name) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL("173.44.44.251", "3306", "accounts", "accountsDB", "epQvHtVoAnUDNJyh");
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM superVotes WHERE name = '" + name + "'");
+        try{
+            while(result.next()){
+                return result.getInt("superVotes");
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return 0;
+    }
+
+    public static int getCoins(String name) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL("173.44.44.251", "3306", "accounts", "accountsDB", "epQvHtVoAnUDNJyh");
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM coins WHERE name = '" + name + "'");
+        try{
+            while(result.next()){
+                return result.getInt("bedwarsCoins");
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return 0;
     }
 
 }
