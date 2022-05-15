@@ -4,9 +4,8 @@ package net.twistedmc.shield.twistedmc;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Emoji;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -16,6 +15,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
+import net.dv8tion.jda.api.managers.channel.ChannelManager;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import org.jetbrains.annotations.NotNull;
@@ -23,14 +23,12 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Objects;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -53,6 +51,10 @@ public class TwistedMC extends ListenerAdapter {
             jda.upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             jda.upsertCommand("staffstatistics","View different network statistics!").queue();
+            jda.upsertCommand("bugreport", "Create a TwistedMC bug report.")
+                    .addOption(OptionType.STRING, "version", "Your Minecraft Version", true)
+                    .addOption(OptionType.STRING, "bug", "Describe the bug here.", true)
+                    .queue();
             jda.updateCommands().queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
@@ -92,6 +94,53 @@ public class TwistedMC extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
+
+        if (event.getName().equals("bugreport")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            } else if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
+                event.reply("You cannot use **/bugreport** in this guild!").setEphemeral(true).queue();
+                return;
+            }
+
+            String version = event.getOption("version").getAsString();
+            String bug = event.getOption("bug").getAsString();
+
+
+            Date now = new java.sql.Date(System.currentTimeMillis());
+            SimpleDateFormat format = new SimpleDateFormat("MM-dd-hh-mm");
+
+            Date date = new java.sql.Date(System.currentTimeMillis());
+            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+            cal.setTime(date);
+            int year = cal.get(Calendar.YEAR);
+
+            event.reply("Thank you for your bug report!").setEphemeral(true).queue();
+
+            TextChannel ticket = event.getGuild().createTextChannel(format.format(now) + "-bugreport-" + event.getMember().getEffectiveName(), event.getGuild().getCategoryById("975287837836599316")).complete();
+            ChannelManager ticketManager = ticket.getManager()
+                    .putPermissionOverride(event.getMember(), 3072L, 8192L)
+                    .putPermissionOverride(event.getGuild().getRolesByName("Admin", true).get(0), 3072L, 8192L)
+                    .putPermissionOverride(event.getGuild().getRolesByName("@everyone", true).get(0), 0L, 1024L);
+            ticketManager.queue();
+
+            EmbedBuilder eb = new EmbedBuilder();
+
+            eb.setTitle("<:bughunter:929619376179650560> " + event.getMember().getEffectiveName() + "'s Bug Report", null);
+
+            eb.setColor(new Color(0, 148, 255));
+
+            eb.setDescription("Minecraft version: **" + version + "**\nBug: **" + bug + "**");
+            eb.setFooter("© " + year + " TwistedMC Studios");
+            eb.setTimestamp(new Date().toInstant());
+
+            ticket.sendMessageEmbeds(eb.build()).content(event.getMember().getAsMention() + " use this channel to post any other information or screenshots that can help us out :)").queue();
+
+        }
+
+
         if (event.getName().equals("shieldreport")) {
 
             if (!event.isFromGuild()) {
@@ -367,5 +416,4 @@ public class TwistedMC extends ListenerAdapter {
             }
         }
     }
-
 }

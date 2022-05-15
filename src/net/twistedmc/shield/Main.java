@@ -1,6 +1,8 @@
 package net.twistedmc.shield;
 
 import net.md_5.bungee.api.plugin.Plugin;
+import net.twistedmc.shield.bedwars.BedWars;
+import net.twistedmc.shield.stats.Stats;
 import net.twistedmc.shield.twistedmc.servercommands.MessageCommand;
 import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
@@ -15,7 +17,8 @@ public final class Main extends Plugin {
 
     private static net.twistedmc.shield.SHIELD.SHIELD SHIELD = null;
     private static net.twistedmc.shield.twistedmc.TwistedMC TwistedMC = null;
-    private static net.twistedmc.shield.bedwars.BedWars BedWars = null;
+    private static Stats Stats = null;
+    private static BedWars BedWars = null;
 
     public static String sqlHost = "173.44.44.251";
     public static String sqlPort = "3306";
@@ -40,14 +43,14 @@ public final class Main extends Plugin {
 
         getProxy().getPluginManager().registerCommand(this, new UsernameVerificationCommand());
 
-        // SHIELD = new SHIELD("ODgwMDIyMDQzNjkxNzE2NjA4.YSYOZQ.nS_OpE0HyBXnliH8x7ZqvSb0OL8");
-        // SHIELD.start();
+        BedWars = new BedWars("OTc1MzM5ODczOTQ5MDg1NzE2.GVt7cU.MD6gWVD-lQysPAdnW-MvX2tQgdwXrO0tDe4Upw");
+        BedWars.start();
 
         TwistedMC = new TwistedMC("ODU5NjgyOTU4OTk3OTc5MTQ2.YNwQJQ.S3E4_VZh2VkHKUn20MKYmDvG57E");
         TwistedMC.start();
 
-        BedWars = new net.twistedmc.shield.bedwars.BedWars("OTYwODQ2MDA1Mjk5OTgyMzM2.YkwXkw.w9znnJrwHwuA-tiyF5ov57jRiEU");
-        BedWars.start();
+        Stats = new Stats("OTYwODQ2MDA1Mjk5OTgyMzM2.YkwXkw.w9znnJrwHwuA-tiyF5ov57jRiEU");
+        Stats.start();
 
         getProxy().getPluginManager().registerCommand(this, new MessageCommand());
     }
@@ -56,7 +59,7 @@ public final class Main extends Plugin {
     public void onDisable() {
         //SHIELD.stop();
         TwistedMC.stop();
-        BedWars.stop();
+        Stats.stop();
     }
 
     public void openConnection() throws SQLException, ClassNotFoundException {
