@@ -123,7 +123,7 @@ public class Stats extends ListenerAdapter {
                                         + "\nEmeralds: **" + getBWStats(Objects.requireNonNull(event.getOption("player")).getAsString(), "emeralds") + "**", true);
                         bedwars.addField("",
                                 "\nWins: **" + getGlobalStats(Objects.requireNonNull(event.getOption("player")).getAsString(), "wins") + "**"
-                                        + "\nWinstreak: **" + "..." + "**"
+                                        + "\nWinstreak: **" + formatter.format(getPlayerWinStreak(event.getOption("player").getAsString())) + "**"
                                         + "\nKills: **" + getGlobalStats(Objects.requireNonNull(event.getOption("player")).getAsString(), "kills") + "**"
                                         + "\nFinal Kills: **" + getGlobalStats(Objects.requireNonNull(event.getOption("player")).getAsString(), "final_kills") + "**"
                                         + "\nBeds Broken: **" + getGlobalStats(Objects.requireNonNull(event.getOption("player")).getAsString(), "beds_destroyed") + "**", true);
@@ -308,6 +308,36 @@ public class Stats extends ListenerAdapter {
             MySQL.getConnection().close();
         }
         return 0;
+    }
+
+    public static int getPlayerWinStreak(String name) throws SQLException, ClassNotFoundException {
+        int streak = 0;
+        MySQL MySQL = new MySQL("173.44.44.253", "3306", "bedwars", "bedwars", "uYjo8e_qgD69-Noy");
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT streak FROM `winstreaks` WHERE uuid = '" + Main.getUUID(name) + "'");
+        try {
+            while (result.next()) {
+                streak = result.getInt("streak");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            if (result != null) {
+                try {
+                    result.close();
+                } catch (SQLException e) {
+                }
+            }
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                }
+            }
+            MySQL.closeConnection();
+        }
+
+        return streak;
     }
 
 }
