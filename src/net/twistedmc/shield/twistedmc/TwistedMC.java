@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -13,8 +14,12 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Modal;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
+import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.managers.channel.ChannelManager;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
@@ -51,10 +56,9 @@ public class TwistedMC extends ListenerAdapter {
             jda.upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             jda.upsertCommand("staffstatistics","View different network statistics!").queue();
-            jda.upsertCommand("bugreport", "Create a TwistedMC bug report.")
-                    .addOption(OptionType.STRING, "version", "Your Minecraft Version", true)
-                    .addOption(OptionType.STRING, "bug", "Describe the bug here.", true)
-                    .queue();
+            jda.upsertCommand("bugreport", "Create a TwistedMC bug report.").queue();
+            jda.upsertCommand("suggestion", "Give us feedback!").queue();
+            jda.upsertCommand("feedback", "Give us feedback!").queue();
             jda.updateCommands().queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
@@ -105,39 +109,57 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
 
-            String version = event.getOption("version").getAsString();
-            String bug = event.getOption("bug").getAsString();
+            TextInput version = TextInput.create("version","Minecraft Version", TextInputStyle.SHORT)
+                    .setPlaceholder("Enter your Minecraft version here")
+                    .setRequiredRange(2,50)
+                    .build();
+            TextInput bug = TextInput.create("bug","Bug Description", TextInputStyle.PARAGRAPH)
+                    .setPlaceholder("Describe the bug here. If you can provide step-by-step instructions to make this bug happen.")
+                    .setRequiredRange(5,500)
+                    .build();
 
+            Modal m = Modal.create("bugreport","Create a bug report")
+                    .addActionRows(ActionRow.of(version),ActionRow.of(bug))
+                    .build();
 
-            Date now = new java.sql.Date(System.currentTimeMillis());
-            SimpleDateFormat format = new SimpleDateFormat("MM-dd-hh-mm");
+            event.replyModal(m).queue();
+            return;
+        }
 
-            Date date = new java.sql.Date(System.currentTimeMillis());
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
-            cal.setTime(date);
-            int year = cal.get(Calendar.YEAR);
+        if (event.getName().equals("suggestion") || event.getName().equals("feedback")) {
 
-            event.reply("Thank you for your bug report!").setEphemeral(true).queue();
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            } else if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
+                event.reply("You cannot use **suggestion** in this guild!").setEphemeral(true).queue();
+                return;
+            }
 
-            TextChannel ticket = event.getGuild().createTextChannel(format.format(now) + "-bugreport-" + event.getMember().getEffectiveName(), event.getGuild().getCategoryById("975287837836599316")).complete();
-            ChannelManager ticketManager = ticket.getManager()
-                    .putPermissionOverride(event.getMember(), 3072L, 8192L)
-                    .putPermissionOverride(event.getGuild().getRolesByName("Admin", true).get(0), 3072L, 8192L)
-                    .putPermissionOverride(event.getGuild().getRolesByName("@everyone", true).get(0), 0L, 1024L);
-            ticketManager.queue();
+            TextInput server = TextInput.create("server","Server you're giving feedback on", TextInputStyle.SHORT)
+                    .setPlaceholder("What server are you giving feedback for?")
+                    .setValue("Bed Wars")
+                    .build();
+            TextInput feedback = TextInput.create("feedback","Your feedback", TextInputStyle.PARAGRAPH)
+                    .setPlaceholder("Please be as specific as possible, we really want to understand what your saying!")
+                    .setRequiredRange(50,1000)
+                    .build();
+            TextInput examples = TextInput.create("examples","Examples", TextInputStyle.PARAGRAPH)
+                    .setPlaceholder("This can be videos, pictures, or anything that might give us a better idea of what you mean.")
+                    .setRequiredRange(20,500)
+                    .build();
+            TextInput additional = TextInput.create("additional","Any Additional Information", TextInputStyle.PARAGRAPH)
+                    .setPlaceholder("Possibly a developer's note, any final things you'd like the viewer to know.")
+                    .setRequired(false)
+                    .setRequiredRange(20,100)
+                    .build();
 
-            EmbedBuilder eb = new EmbedBuilder();
+            Modal m = Modal.create("suggestion","Feedback Form")
+                    .addActionRows(ActionRow.of(server),ActionRow.of(feedback),ActionRow.of(examples),ActionRow.of(additional))
+                    .build();
 
-            eb.setTitle("<:bughunter:929619376179650560> " + event.getMember().getEffectiveName() + "'s Bug Report", null);
-
-            eb.setColor(new Color(0, 148, 255));
-
-            eb.setDescription("Minecraft version: **" + version + "**\nBug: **" + bug + "**");
-            eb.setFooter("© " + year + " TwistedMC Studios");
-            eb.setTimestamp(new Date().toInstant());
-
-            ticket.sendMessageEmbeds(eb.build()).content(event.getMember().getAsMention() + " use this channel to post any other information or screenshots that can help us out :)").queue();
-
+            event.replyModal(m).queue();
+            return;
         }
 
 
@@ -255,6 +277,77 @@ public class TwistedMC extends ListenerAdapter {
             emb.setTimestamp(new Date().toInstant());
             emb.setFooter("TwistedMC");
             event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
+        }
+    }
+
+    @Override
+    public void onModalInteraction(ModalInteractionEvent event) {
+        if (event.getModalId().equalsIgnoreCase("bugreport")) {
+            String version = event.getValue("version").getAsString();
+            String bug = event.getValue("bug").getAsString();
+
+            Date now = new java.sql.Date(System.currentTimeMillis());
+            SimpleDateFormat format = new SimpleDateFormat("MM-dd-hh-mm");
+
+            Date date = new java.sql.Date(System.currentTimeMillis());
+            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+            cal.setTime(date);
+            int year = cal.get(Calendar.YEAR);
+
+            TextChannel ticket = event.getGuild().createTextChannel(format.format(now) + "-bugreport-" + event.getMember().getEffectiveName(), event.getGuild().getCategoryById("975287837836599316")).complete();
+            ChannelManager ticketManager = ticket.getManager()
+                    .putPermissionOverride(event.getMember(), 3072L, 8192L)
+                    .putPermissionOverride(event.getGuild().getRolesByName("Admin", true).get(0), 3072L, 8192L)
+                    .putPermissionOverride(event.getGuild().getRolesByName("@everyone", true).get(0), 0L, 1024L);
+            ticketManager.queue();
+
+            EmbedBuilder eb = new EmbedBuilder();
+
+            eb.setTitle("<:bughunter:929619376179650560> " + event.getMember().getEffectiveName() + "'s Bug Report", null);
+
+            eb.setColor(new Color(0, 148, 255));
+
+            eb.setDescription("Minecraft version: **" + version + "**\nBug: **" + bug + "**");
+            eb.setFooter("© " + year + " TwistedMC Studios");
+            eb.setTimestamp(new Date().toInstant());
+
+            ticket.sendMessageEmbeds(eb.build()).content(event.getMember().getAsMention() + " use this channel to post any other information or screenshots that can help us out :)").queue();
+            event.reply("Thank you for your bug report!").setEphemeral(true).queue();
+        }
+
+        if (event.getModalId().equalsIgnoreCase("suggestion")) {
+            String server = event.getValue("server").getAsString();
+            String feedback = event.getValue("feedback").getAsString();
+            String examples = event.getValue("examples").getAsString();
+            String additional = event.getValue("additional").getAsString();
+
+            Date now = new java.sql.Date(System.currentTimeMillis());
+            SimpleDateFormat format = new SimpleDateFormat("MM-dd-hh-mm");
+
+            Date date = new java.sql.Date(System.currentTimeMillis());
+            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+            cal.setTime(date);
+            int year = cal.get(Calendar.YEAR);
+
+            TextChannel ticket = event.getGuild().createTextChannel(format.format(now) + "-feedback-" + event.getMember().getEffectiveName(), event.getGuild().getCategoryById("975287837836599316")).complete();
+            ChannelManager ticketManager = ticket.getManager()
+                    .putPermissionOverride(event.getMember(), 3072L, 8192L)
+                    .putPermissionOverride(event.getGuild().getRolesByName("Admin", true).get(0), 3072L, 8192L)
+                    .putPermissionOverride(event.getGuild().getRolesByName("@everyone", true).get(0), 0L, 1024L);
+            ticketManager.queue();
+
+            EmbedBuilder eb = new EmbedBuilder();
+
+            eb.setTitle( event.getMember().getEffectiveName() + "'s Feedback", null);
+
+            eb.setColor(new Color(0, 148, 255));
+
+            eb.setDescription("Server: **" + server + "**\n\nFeedback: **" + feedback + "**\n\nExamples: **" + examples + "**\n\nAdditional Info: **" + additional + "**");
+            eb.setFooter("© " + year + " TwistedMC Studios");
+            eb.setTimestamp(new Date().toInstant());
+
+            ticket.sendMessageEmbeds(eb.build()).queue();
+            event.reply("Thank you for your feedback!").setEphemeral(true).queue();
         }
     }
 
