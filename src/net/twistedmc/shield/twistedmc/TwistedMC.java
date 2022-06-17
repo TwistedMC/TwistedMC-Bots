@@ -75,12 +75,17 @@ public class TwistedMC extends ListenerAdapter {
             jda.addEventListener(this);
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
             //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
-            jda.upsertCommand("shieldreport", "View a SHIELD report.")
+            jda.getGuildById(GuildID).upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
-            jda.upsertCommand("staffstatistics","View different network statistics!").queue();
-            jda.upsertCommand("bugreport", "Create a TwistedMC bug report.").queue();
-            jda.upsertCommand("suggestion", "Give us feedback!").queue();
-            jda.upsertCommand("feedback", "Give us feedback!").queue();
+            jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("staffstatistics","View different network statistics!").queue();
+            jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("bugreport", "Create a TwistedMC bug report.").queue();
+            jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("suggestion", "Give us feedback!").queue();
+            jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("feedback", "Give us feedback!").queue();
+            jda.updateCommands().queue();
             jda.getGuildById(GuildID).upsertCommand("moderate","Moderate a user with different options")
                     .addOption(OptionType.USER,"user","User to Moderate",true)
                     .addOption(OptionType.BOOLEAN,"bypass","Bypass the final confirmation?",false)
@@ -341,33 +346,36 @@ public class TwistedMC extends ListenerAdapter {
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
-        }
-
-        if (!event.isFromGuild()) {
-            event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").setEphemeral(true).queue();
             return;
         }
 
-        if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
-            event.reply("You cannot use **/staffstatistics** in this guild!").setEphemeral(true).queue();
-            return;
-        } else {
+        if (event.getName().equals("staffstatistics")) {
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").setEphemeral(true).queue();
+                return;
+            }
 
-            SelectMenu menu = SelectMenu.create("menu:stats")
-                    .setPlaceholder("Select Statistic Choice")
-                    .setRequiredRange(1, 1)
-                    .addOption("Accounts", "stat-accs", "Member Account Stats", Emoji.fromEmote("TwistedRank", Long.parseLong("970626693322641418"), false))
-                    .addOption("Bans", "stat-bans", "Banned Account Stats", Emoji.fromEmote("AdminRank", Long.parseLong("970626971052687370"), false))
-                    .addOption("Blacklists", "stat-bl", "Blacklisted Account Stats", Emoji.fromEmote("Blacklists", Long.parseLong("972955708016427039"), false))
-                    .addOption("SHIELD Reports", "stat-sr", "SHIELD Report Stats", Emoji.fromEmote("SHIELD", Long.parseLong("926049519538409492"), false))
-                    .addOption("Mutes", "stat-mutes", "Muted Account Stats", Emoji.fromEmote("ModRank", Long.parseLong("970626971228848149"), false))
-                    .build();
-            EmbedBuilder emb = new EmbedBuilder();
-            emb.setColor(new Color(51, 153, 204));
-            emb.setDescription("**Please select the statistic you wish to view!**");
-            emb.setTimestamp(new Date().toInstant());
-            emb.setFooter("TwistedMC");
-            event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
+            if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
+                event.reply("You cannot use **/staffstatistics** in this guild!").setEphemeral(true).queue();
+                return;
+            } else {
+                SelectMenu menu = SelectMenu.create("menu:stats")
+                        .setPlaceholder("Select Statistic Choice")
+                        .setRequiredRange(1, 1)
+                        .addOption("Accounts", "stat-accs", "Member Account Stats", Emoji.fromEmote("TwistedRank", Long.parseLong("970626693322641418"), false))
+                        .addOption("Bans", "stat-bans", "Banned Account Stats", Emoji.fromEmote("AdminRank", Long.parseLong("970626971052687370"), false))
+                        .addOption("Blacklists", "stat-bl", "Blacklisted Account Stats", Emoji.fromEmote("Blacklists", Long.parseLong("972955708016427039"), false))
+                        .addOption("SHIELD Reports", "stat-sr", "SHIELD Report Stats", Emoji.fromEmote("SHIELD", Long.parseLong("926049519538409492"), false))
+                        .addOption("Mutes", "stat-mutes", "Muted Account Stats", Emoji.fromEmote("ModRank", Long.parseLong("970626971228848149"), false))
+                        .build();
+                EmbedBuilder emb = new EmbedBuilder();
+                emb.setColor(new Color(51, 153, 204));
+                emb.setDescription("**Please select the statistic you wish to view!**");
+                emb.setTimestamp(new Date().toInstant());
+                emb.setFooter("TwistedMC");
+                event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
+            }
+            return;
         }
     }
 
