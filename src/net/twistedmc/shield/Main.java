@@ -1,16 +1,22 @@
 package net.twistedmc.shield;
 
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.md_5.bungee.api.plugin.Plugin;
+import net.twistedmc.shield.Util.ModerationCommandAction;
 import net.twistedmc.shield.bedwars.BedWars;
 import net.twistedmc.shield.stats.Stats;
 import net.twistedmc.shield.twistedmc.servercommands.MessageCommand;
 import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
 
+import java.awt.*;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.logging.Level;
 
 public final class Main extends Plugin {
@@ -23,8 +29,14 @@ public final class Main extends Plugin {
     public static String sqlHost = "173.44.44.251";
     public static String sqlPort = "3306";
     public static String sqlDb = "accounts";
-    public static String sqlUser = "accountsDB";
-    public static String sqlPw = "epQvHtVoAnUDNJyh";
+    public static String sqlUser = "accounts";
+    public static String sqlPw = "1b5m6-aKy*3d]3Z7l1ly8!5eld-hx5ZR(HFYreATsUj5J";
+
+    public static String sqlHostDM = "173.44.44.251";
+    public static String sqlPortDM = "3306";
+    public static String sqlDbDM = "discordModeration";
+    public static String sqlUserDM = "discordModeration";
+    public static String sqlPwDM = "00za3/S9I4V0.Xd[gHKwT3@w3G4r_iAj6Bc.7P";
 
     public static Connection connection = null;
     public static Statement statement;
@@ -418,6 +430,102 @@ public final class Main extends Plugin {
             MySQL.getConnection().close();
         }
         return false;
+    }
+
+    public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason) throws SQLException, ClassNotFoundException{
+        if (reason.equals("")) { reason = action.getDefaultReason(); }
+        EmbedBuilder log = new EmbedBuilder();
+        String Cases = "";
+        int cases = Main.getCases(); if (cases == -1) { Cases += "?`";} else { Cases += (cases + 1) + "`"; }
+        log.setTitle("Moderation Log | `Case #" + Cases);
+        log.setColor(new Color(253, 216, 1));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Moderator**","**`" + author.getAsTag() + "`** (**`" + author.getId() + "`**)",true);
+        log.addField("**Moderated User**","**`" + moderated.getAsTag() + "`** (**`" + moderated.getId() + "`**)",true);
+        log.addBlankField(true);
+        log.addField("**Action**","**`" + action.getActionLabel() + "`**",false);
+        log.addField("**Reason**","**`" + reason + "`**",false);
+        return log.build();
+    }
+
+    public static int getCases() throws SQLException, ClassNotFoundException {
+        int Cases = 0;
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        ResultSet set = null;
+        try {
+            set = st.executeQuery("SELECT * FROM `discord_punishments`");
+            while(set.next()) {
+                Cases += 1;
+            }
+            // set.close();
+            // st.close();
+            // st.getConnection().close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }  finally {
+            try {
+                set.close();
+                st.close();
+                MySQL.getConnection().close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        }
+        return Cases;
+    }
+    public static void insertCase(User target, ModerationCommandAction action, String reason, User moderator) throws SQLException, ClassNotFoundException {
+        SimpleDateFormat format = new SimpleDateFormat("MMM dd, yyyy hh:mma");
+        TimeZone etTimeZone = TimeZone.getTimeZone("America/New_York");
+        format.setTimeZone(etTimeZone);
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("INSERT INTO `discord_punishments`(`id`, `user`,`action`,`reason`,`moderator`,`timestamp`) " +
+                    "VALUES (0,'" + target.getAsTag() + "(" + target.getId() + ")','" + action.getActionLabel() + "','"
+                    + reason + "','" + moderator.getAsTag() + "(" + moderator.getId() + ")','" + format.format(new java.util.Date()) + "')");
+            //st.close();
+            //st.getConnection().close();
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+                // Main.mySQL.getConnection().close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+    public static MessageEmbed generatewarnEmbed(String reason) {
+        if (reason.equals("")) { reason = "Warned by a Moderator+"; }
+        EmbedBuilder log = new EmbedBuilder();
+        log.setTitle("You've received a warning!");
+        log.setDescription("**This is just a warning to inform you the behavior below (the reason for being warned) is not allowed in the server.**\n__If you continue this behavior you may be moderated further.__");
+        log.setColor(new Color(253, 216, 1));
+        log.setTimestamp(new java.util.Date().toInstant());
+        //log.addField("**Moderator**",author.getAsTag(),true);
+        //log.addField("**Moderated User**",moderated.getAsTag(),true);
+        //log.addBlankField(true);
+        //log.addField("**Action**",action.getActionLabel(),false);
+        log.addField("**Reason**",reason,false);
+        return log.build();
+    }
+
+    public static MessageEmbed generateVirtualBanEmbed(String reason) {
+        if (reason.equalsIgnoreCase("")) { reason = ModerationCommandAction.VIRTUALBAN.getDefaultReason(); }
+        EmbedBuilder vb = new EmbedBuilder();
+        vb.setColor(new Color(0,0,0));
+        vb.setTitle("Uh oh. Looks like you've been virtually banned.");
+        vb.setDescription("Sorry about that, [maybe you can make an appeal](https://twistedmc.net/tickets/create/ticket_form_id=6). Otherwise, you'll no longer be able to participate in the TwistedMC Discord server."
+                + "\n\n__**Reason for Virtual Ban:**__\n*`" + reason + "`*");
+
+        return vb.build();
     }
 
 }
