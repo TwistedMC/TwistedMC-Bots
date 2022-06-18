@@ -17,6 +17,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.logging.Level;
 
 public final class Main extends Plugin {
@@ -229,13 +230,13 @@ public final class Main extends Plugin {
         return null;
     }
 
-    public static String getUUID(String username) throws SQLException, ClassNotFoundException {
+    public static UUID getUUID(String username) throws SQLException, ClassNotFoundException {
         MySQL MySQL = new MySQL(Main.sqlHost, Main.sqlPort, Main.sqlDb, Main.sqlUser, Main.sqlPw);
         Statement statement = MySQL.openConnection().createStatement();
         ResultSet result = statement.executeQuery("SELECT * FROM `alts_users` WHERE playername = '" + username + "'");
         try {
             while(result.next()){
-                return result.getString("uuid");
+                return UUID.fromString(result.getString("uuid"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -430,6 +431,43 @@ public final class Main extends Plugin {
             MySQL.getConnection().close();
         }
         return false;
+    }
+
+    public static boolean isMaintenance(String botName) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL("173.44.44.251", "3306", "publicDiscordBots", "publicDiscordBots", "OuyvDusfYONFIxuR");
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM settings WHERE botName = '" + botName + "' AND maintenance = '1'");
+        try {
+            while (result.next()) {
+                return result.getString("botName") != null;
+            }
+            return false;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return false;
+    }
+
+    public static String getStatusLink(String botName) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL("173.44.44.251", "3306", "publicDiscordBots", "publicDiscordBots", "OuyvDusfYONFIxuR");
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM `settings` WHERE botName = '" + botName + "'");
+        try {
+            while(result.next()){
+                return result.getString("statusLink");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return null;
     }
 
     public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason) throws SQLException, ClassNotFoundException{
