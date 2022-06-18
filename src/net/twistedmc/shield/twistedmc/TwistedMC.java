@@ -1,10 +1,7 @@
 package net.twistedmc.shield.twistedmc;
 
 
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -16,6 +13,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.Modal;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
@@ -73,8 +71,8 @@ public class TwistedMC extends ListenerAdapter {
             this.jda = JDABuilder.createDefault(token).build();
             jda.awaitReady();
             jda.addEventListener(this);
-            //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
-            //jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
+            jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
+            jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
             jda.getGuildById(GuildID).upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             jda.updateCommands().queue();
@@ -90,6 +88,9 @@ public class TwistedMC extends ListenerAdapter {
                     .addOption(OptionType.USER,"user","User to Moderate",true)
                     .addOption(OptionType.BOOLEAN,"bypass","Bypass the final confirmation?",false)
                     .queue();
+            jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("maintenance", "Send Maintenance Alert in #sync")
+                    .addOption(OptionType.STRING, "link", "Status URL Link", true).queue();
             jda.updateCommands().queue();
             System.out.println("[SHIELD] Starting TwistedMC bot..");
         } catch (LoginException | InterruptedException err) {
@@ -146,6 +147,31 @@ public class TwistedMC extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
+
+        if (event.getName().equals("maintenance")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            } else if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
+                event.reply("You cannot use **/maintenance** in this guild!").setEphemeral(true).queue();
+                return;
+            }
+
+            String link = event.getOption("link").getAsString();
+
+            EmbedBuilder maintenance = new EmbedBuilder();
+            maintenance.setTitle("<:danger:869367070591189014> WE'RE UNDER MAINTENANCE!");
+            maintenance.setDescription("Sorry about that! You are not able to link your account as we are currently under maintenance. For More Information, click the button below:");
+            maintenance.setColor(new Color(255, 0, 0));
+            maintenance.setFooter(footer);
+            maintenance.setTimestamp(new Date().toInstant());
+            event.replyEmbeds(maintenance.build()).addActionRow(Button.link(link, "View Status Updates"))
+                    .queue();
+            maintenance.clear();
+            maintenance = null;
+            return;
+        }
 
         if (event.getName().equals("bugreport")) {
 
