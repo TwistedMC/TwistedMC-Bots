@@ -44,10 +44,9 @@ public class Stats extends ListenerAdapter {
             this.jda = JDABuilder.createDefault(token).build();
             jda.addEventListener(this);
             jda.getPresence().setPresence(Activity.playing("Play.TwistedMC.Net"), false);
-            jda.upsertCommand("bedwars", "View a player's Bed Wars stats.")
-                    .addOption(OptionType.STRING, "player", "Player Username", true).queue();
-            jda.updateCommands().queue();
             jda.upsertCommand("network", "View a player's Network stats.")
+                    .addOption(OptionType.STRING, "player", "Player Username", true).queue();
+            jda.upsertCommand("bedwars", "View a player's Bed Wars stats.")
                     .addOption(OptionType.STRING, "player", "Player Username", true).queue();
             jda.updateCommands().queue();
             System.out.println("[SHIELD] Starting Bed Wars bot..");
@@ -82,7 +81,7 @@ public class Stats extends ListenerAdapter {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
                     event.reply("**HOLD UP!** This guild is currently suspended from using the Statistics bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
                                     "below:")
-                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/ticket_form_id=5/", "Submit a request"))
+                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
                 }
@@ -216,7 +215,7 @@ public class Stats extends ListenerAdapter {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
                     event.reply("**HOLD UP!** This guild is currently suspended from using the Statistics bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
                                     "below:")
-                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/ticket_form_id=5/", "Submit a request"))
+                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
                 }
