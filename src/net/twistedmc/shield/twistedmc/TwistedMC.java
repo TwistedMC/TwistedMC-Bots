@@ -943,7 +943,7 @@ public class TwistedMC extends ListenerAdapter {
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
                         MessageEmbed vbPM = Main.generateKickEmbed(reason);
-                        sendMessage(target,vbPM, "2");
+                        sendMessageKick(target,vbPM);
 
                         g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();

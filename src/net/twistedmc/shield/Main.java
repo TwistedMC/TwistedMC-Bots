@@ -562,7 +562,7 @@ public final class Main extends Plugin {
         if (reason.equals("")) { reason = "Timed out by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been timed out!");
-        log.setDescription("You have been timed out from the TwistedMC Discord server!");
+        log.setDescription("You have been timed in the TwistedMC Discord server!");
         log.setColor(new Color(175, 66, 0));
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("**Reason**",reason,false);
