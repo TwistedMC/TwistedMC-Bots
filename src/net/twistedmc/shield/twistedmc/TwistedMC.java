@@ -129,6 +129,18 @@ public class TwistedMC extends ListenerAdapter {
                 .queue();
     }
 
+    public static void sendMessage(User user, MessageEmbed embed, String punishmentType) {
+        user.openPrivateChannel()
+                .flatMap(channel -> channel.sendMessageEmbeds(embed).setActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=6&discord_id=" + user.getId() + "&punishment_type=" + punishmentType, "Appeal this punishment")))
+                .queue();
+    }
+
+    public static void sendMessageKick(User user, MessageEmbed embed) {
+        user.openPrivateChannel()
+                .flatMap(channel -> channel.sendMessageEmbeds(embed).setActionRow(Button.link("https://discord.gg/twistedmc", "Join back")))
+                .queue();
+    }
+
     public static void sendMessage(User user, String content, int delay) {
         user.openPrivateChannel()
                 .flatMap(channel -> channel.sendMessage(content))
@@ -486,6 +498,10 @@ public class TwistedMC extends ListenerAdapter {
                 if (modConfirmBypass.get(event.getUser().getId())) {
                     if (data[1].equalsIgnoreCase("kick")) {
                         ModerationCommandAction action = ModerationCommandAction.KICK;
+
+                        MessageEmbed vbPM = Main.generateKickEmbed(reason);
+                        sendMessageKick(target,vbPM);
+
                         g.kick(UserSnowflake.fromId(target.getId()),reason).queue();
                         MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
@@ -495,6 +511,10 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("ban")) {
                         ModerationCommandAction action = ModerationCommandAction.BAN;
+
+                        MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                        sendMessage(target,vbPM, "2");
+
                         g.ban(UserSnowflake.fromId(target.getId()),1,reason).queue();
                         MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                         Main.insertCase(target, action,data[2],event.getUser());
@@ -519,7 +539,7 @@ public class TwistedMC extends ListenerAdapter {
                         MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason);
                         MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason);
                         Main.insertCase(target,action,reason,event.getUser());
-                        sendMessage(target,vbPM);
+                        sendMessage(target,vbPM, "3");
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
@@ -547,6 +567,10 @@ public class TwistedMC extends ListenerAdapter {
                         try {
                             MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                             Main.insertCase(target, action,data[2],event.getUser());
+
+                            MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                            sendMessage(target,vbPM, "1");
+
                             g.getMember(UserSnowflake.fromId(modMapUser.get(event.getUser().getId()).getId())).timeoutFor(duration,timeUnit).queue();
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
@@ -558,7 +582,7 @@ public class TwistedMC extends ListenerAdapter {
                     }
                 } else {
                     EmbedBuilder confirm_msg = new EmbedBuilder();
-                    confirm_msg.setTitle("Confirm Moderation Action? debug1");
+                    confirm_msg.setTitle("Confirm Moderation Action?");
                     if (data[1].equalsIgnoreCase("timeout")) {
                         confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
                                 + "**Action:** **`" + data[1].toUpperCase() + "`** \n"
@@ -914,29 +938,41 @@ public class TwistedMC extends ListenerAdapter {
                     String reason = data[2];
                     if (data[1].equalsIgnoreCase("kick")) {
                         ModerationCommandAction action = ModerationCommandAction.KICK;
-                        g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
+                        Main.insertCase(target,action,reason,event.getUser());
                         MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
+                        MessageEmbed vbPM = Main.generateKickEmbed(reason);
+                        sendMessage(target,vbPM, "2");
+
+                        g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
                         event.editSelectMenu(fakemenu).queue();
                         return;
                     }
                     if (data[1].equalsIgnoreCase("ban")) {
                         ModerationCommandAction action = ModerationCommandAction.BAN;
-                        g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
+                        Main.insertCase(target,action,reason,event.getUser());
                         MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
+                        MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                        sendMessage(target,vbPM, "2");
+
+                        g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
                         event.editSelectMenu(fakemenu).queue();
                         return;
                     }
                     if (data[1].equalsIgnoreCase("warning")) {
                         ModerationCommandAction action = ModerationCommandAction.WARN;
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
                         Main.insertCase(target, action, data[2], event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
                         MessageEmbed warn = Main.generatewarnEmbed(reason);
                         sendMessage(target, warn);
-                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
                         event.editSelectMenu(fakemenu).queue();
                         return;
@@ -955,6 +991,10 @@ public class TwistedMC extends ListenerAdapter {
                         MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason());
                         Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser());
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
+                        MessageEmbed vbPM = Main.generateBanEmbed(ModerationCommandAction.UNDERAGE.getDefaultReason());
+                        sendMessage(target,vbPM, "2");
+
                         event.editSelectMenu(fakemenu).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
                         return;
@@ -983,6 +1023,10 @@ public class TwistedMC extends ListenerAdapter {
                             Main.insertCase(target, action,data[2],event.getUser());
                             g.getMember(UserSnowflake.fromId(modMapUser.get(event.getUser().getId()).getId())).timeoutFor(duration,timeUnit).queue();
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
+                            MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                            sendMessage(target,vbPM, "1");
+
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
                             removeUserFromMACMaps(event.getUser().getId());
                         } catch (NullPointerException e) {
@@ -994,7 +1038,7 @@ public class TwistedMC extends ListenerAdapter {
                         MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason);
                         MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason);
                         Main.insertCase(target,action,reason,event.getUser());
-                        sendMessage(target,vbPM);
+                        sendMessage(target,vbPM, "3");
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();

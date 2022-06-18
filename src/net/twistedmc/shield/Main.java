@@ -2,7 +2,9 @@ package net.twistedmc.shield;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.Util.ModerationCommandAction;
 import net.twistedmc.shield.bedwars.BedWars;
@@ -14,11 +16,10 @@ import net.twistedmc.shield.twistedmc.servercommands.VirtBanCommand;
 
 import java.awt.*;
 import java.sql.*;
+import java.sql.Date;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.TimeZone;
-import java.util.UUID;
 import java.util.logging.Level;
 
 public final class Main extends Plugin {
@@ -42,6 +43,10 @@ public final class Main extends Plugin {
 
     public static Connection connection = null;
     public static Statement statement;
+
+    static Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+    static int year = calendar.get(Calendar.YEAR);
+    static String footer = "© " + year + " TwistedMC Studios";
 
     @Override
     public void onEnable() {
@@ -541,29 +546,66 @@ public final class Main extends Plugin {
         }
     }
 
+    public static MessageEmbed generateBanEmbed(String reason) {
+        if (reason.equals("")) { reason = "Banned by a Moderator+"; }
+        EmbedBuilder log = new EmbedBuilder();
+        log.setTitle("You've been banned!");
+        log.setDescription("You have been banned from the TwistedMC Discord server!");
+        log.setColor(new Color(255, 0, 0));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Reason**",reason,false);
+        log.setFooter(footer);
+        return log.build();
+    }
+
+    public static MessageEmbed generateTimeoutEmbed(String reason) {
+        if (reason.equals("")) { reason = "Timed out by a Moderator+"; }
+        EmbedBuilder log = new EmbedBuilder();
+        log.setTitle("You've been timed out!");
+        log.setDescription("You have been timed out from the TwistedMC Discord server!");
+        log.setColor(new Color(175, 66, 0));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Reason**",reason,false);
+        log.setFooter(footer);
+        return log.build();
+    }
+
+    public static MessageEmbed generateKickEmbed(String reason) {
+        if (reason.equals("")) { reason = "Kicked by a Moderator+"; }
+        EmbedBuilder log = new EmbedBuilder();
+        log.setTitle("You've been kicked!");
+        log.setDescription("You have been kicked from the TwistedMC Discord server!");
+        log.setColor(new Color(255, 97, 0));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Reason**",reason,false);
+        log.setFooter(footer);
+        return log.build();
+    }
+
 
     public static MessageEmbed generatewarnEmbed(String reason) {
         if (reason.equals("")) { reason = "Warned by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've received a warning!");
-        log.setDescription("**This is just a warning to inform you the behavior below (the reason for being warned) is not allowed in the server.**\n__If you continue this behavior you may be moderated further.__");
+        log.setDescription("**This is just a warning to inform you the behavior below is not allowed in the TwistedMC Discord server.**\nIf you continue this behavior, you may be moderated further.");
         log.setColor(new Color(253, 216, 1));
         log.setTimestamp(new java.util.Date().toInstant());
-        //log.addField("**Moderator**",author.getAsTag(),true);
-        //log.addField("**Moderated User**",moderated.getAsTag(),true);
-        //log.addBlankField(true);
-        //log.addField("**Action**",action.getActionLabel(),false);
         log.addField("**Reason**",reason,false);
+        log.setFooter(footer);
         return log.build();
     }
 
     public static MessageEmbed generateVirtualBanEmbed(String reason) {
         if (reason.equalsIgnoreCase("")) { reason = ModerationCommandAction.VIRTUALBAN.getDefaultReason(); }
         EmbedBuilder vb = new EmbedBuilder();
-        vb.setColor(new Color(0,0,0));
-        vb.setTitle("Uh oh. Looks like you've been virtually banned.");
-        vb.setDescription("Sorry about that, [maybe you can make an appeal](https://twistedmc.net/tickets/create/ticket_form_id=6). Otherwise, you'll no longer be able to participate in the TwistedMC Discord server."
+
+        vb.setTitle("Uh oh. Looks like you've been virtually banned.", null);
+
+        vb.setColor(new Color(35, 35, 35));
+
+        vb.setDescription("Sorry about that, maybe you can make an appeal. Otherwise, you'll no longer be able to participate in the TwistedMC Discord server."
                 + "\n\n__**Reason for Virtual Ban:**__\n*`" + reason + "`*");
+        vb.setFooter(footer);
 
         return vb.build();
     }
