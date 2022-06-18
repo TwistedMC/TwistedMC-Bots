@@ -537,9 +537,9 @@ public class TwistedMC extends ListenerAdapter {
                             }*/
                         TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
                         if (timeUnit == TimeUnit.DAYS && duration > 28 ||
-                            timeUnit == TimeUnit.HOURS && duration > 672 ||
-                            timeUnit == TimeUnit.MINUTES && duration > 40320 ||
-                            timeUnit == TimeUnit.SECONDS && duration > 2419200) {
+                                timeUnit == TimeUnit.HOURS && duration > 672 ||
+                                timeUnit == TimeUnit.MINUTES && duration > 40320 ||
+                                timeUnit == TimeUnit.SECONDS && duration > 2419200) {
                             event.reply("Invalid Duration! MAC Cancelled!").queue();
                             removeUserFromMACMaps(event.getUser().getId());
                             return;
@@ -558,7 +558,7 @@ public class TwistedMC extends ListenerAdapter {
                     }
                 } else {
                     EmbedBuilder confirm_msg = new EmbedBuilder();
-                    confirm_msg.setTitle("Confirm Moderation Action?");
+                    confirm_msg.setTitle("Confirm Moderation Action? debug1");
                     if (data[1].equalsIgnoreCase("timeout")) {
                         confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
                                 + "**Action:** **`" + data[1].toUpperCase() + "`** \n"
@@ -567,10 +567,10 @@ public class TwistedMC extends ListenerAdapter {
                                 + "**Reason:** **`" + event.getValue("mac:reasoninput").getAsString() + "`**"
                         );
                     } else {
-                    confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
-                            + "**Action:** **`" + data[1].toUpperCase() + "`** \n"
-                            + "**Reason:** **`" + event.getValue("mac:reasoninput").getAsString() + "`**"
-                    );
+                        confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
+                                + "**Action:** **`" + data[1].toUpperCase() + "`** \n"
+                                + "**Reason:** **`" + event.getValue("mac:reasoninput").getAsString() + "`**"
+                        );
                     }
                     confirm_msg.setFooter(footer);
                     confirm_msg.setTimestamp(new Date().toInstant());
@@ -591,13 +591,12 @@ public class TwistedMC extends ListenerAdapter {
                     event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
                     confirm_msg.clear();
                     confirm_msg = null;
-                    return;
+                }
+            } catch (SQLException | ClassNotFoundException | NullPointerException | IllegalArgumentException e) {
+                e.printStackTrace();
+                event.reply("Something went wrong!").setEphemeral(true).queue();
             }
-        } catch (SQLException | ClassNotFoundException | NullPointerException | IllegalArgumentException e) {
-            e.printStackTrace();
-            event.reply("Something went wrong!").setEphemeral(true).queue();
         }
-      }
     }
 
 
@@ -873,7 +872,7 @@ public class TwistedMC extends ListenerAdapter {
                     TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
                             .setRequired(true)
                             .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
-                            .setRequiredRange(1,50)
+                            .setRequiredRange(1, 50)
                             .build();
 
                     Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(
@@ -902,115 +901,116 @@ public class TwistedMC extends ListenerAdapter {
                 e.printStackTrace();
                 event.reply("Something went wrong!").setEphemeral(true).queue();
             }
-            if (event.getSelectMenu().getId().equalsIgnoreCase("menu:modaction-confirm")) {
-                try {
-                    if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("confirm-yes")) {
-                        SelectMenu fakemenu = event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder("Confirm Selected").build();
-                        String[] data = modMap.get(event.getUser().getId());
-                        User target = modMapUser.get(event.getUser().getId());
-                        Guild g = getJDA().getGuildById(GuildID);
-                        String reason = data[2];
-                        if (data[1].equalsIgnoreCase("kick")) {
-                            ModerationCommandAction action = ModerationCommandAction.KICK;
-                            g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
-                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                            event.reply("Moderation Complete!").setEphemeral(true).queue();
-                            event.editSelectMenu(fakemenu).queue();
-                            return;
-                        }
-                        if (data[1].equalsIgnoreCase("ban")) {
-                            ModerationCommandAction action = ModerationCommandAction.BAN;
-                            g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
-                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                            event.reply("Moderation Complete!").setEphemeral(true).queue();
-                            event.editSelectMenu(fakemenu).queue();
-                            return;
-                        }
-                        if (data[1].equalsIgnoreCase("warning")) {
-                            ModerationCommandAction action = ModerationCommandAction.WARN;
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
-                            Main.insertCase(target, action, data[2], event.getUser());
-                            MessageEmbed warn = Main.generatewarnEmbed(reason);
-                            sendMessage(target, warn);
-                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                            event.reply("Moderation Complete!").setEphemeral(true).queue();
-                            event.editSelectMenu(fakemenu).queue();
-                            return;
-                        }
-                        if (data[1].equalsIgnoreCase("ca-ban")) {
-                            g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason());
-                            Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser());
-                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                            event.editSelectMenu(fakemenu).queue();
-                            event.reply("Moderation Complete!").setEphemeral(true).queue();
-                            return;
-                        }
-                        if (data[1].equalsIgnoreCase("underage-ban")) {
-                            g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason());
-                            Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser());
-                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                            event.editSelectMenu(fakemenu).queue();
-                            event.reply("Moderation Complete!").setEphemeral(true).queue();
-                            return;
-                        }
-                        if (data[1].equalsIgnoreCase("timeout")) {
-                            ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
-                            String[] todata = modTimeout.get(event.getUser().getId());
-                            String unit = todata[0];
-                            int duration = Integer.parseInt(todata[1]);
+        }
+
+
+        if (event.getSelectMenu().getId().equalsIgnoreCase("menu:modaction-confirm")) {
+            try {
+                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("confirm-yes")) {
+                    SelectMenu fakemenu = event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder("Confirm Selected").build();
+                    String[] data = modMap.get(event.getUser().getId());
+                    User target = modMapUser.get(event.getUser().getId());
+                    Guild g = getJDA().getGuildById(GuildID);
+                    String reason = data[2];
+                    if (data[1].equalsIgnoreCase("kick")) {
+                        ModerationCommandAction action = ModerationCommandAction.KICK;
+                        g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                        event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("ban")) {
+                        ModerationCommandAction action = ModerationCommandAction.BAN;
+                        g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                        event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("warning")) {
+                        ModerationCommandAction action = ModerationCommandAction.WARN;
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        Main.insertCase(target, action, data[2], event.getUser());
+                        MessageEmbed warn = Main.generatewarnEmbed(reason);
+                        sendMessage(target, warn);
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                        event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("ca-ban")) {
+                        g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason());
+                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser());
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("underage-ban")) {
+                        g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason());
+                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser());
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("timeout")) {
+                        ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
+                        String[] todata = modTimeout.get(event.getUser().getId());
+                        String unit = todata[0];
+                        int duration = Integer.parseInt(todata[1]);
                             /*if (!unit.equalsIgnoreCase("seconds") || !unit.equalsIgnoreCase("minutes") || !unit.equalsIgnoreCase("hours") || !unit.equalsIgnoreCase("days")) {
                                 event.reply("Invalid TimeUnit! MAC Cancelled!").setEphemeral(true).queue();
                                 removeUserFromMACMaps(event.getUser().getId());
                                 return;
                             }*/
-                            TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
-                            if (timeUnit == TimeUnit.DAYS && duration > 28 ||
-                                    timeUnit == TimeUnit.HOURS && duration > 672 ||
-                                    timeUnit == TimeUnit.MINUTES && duration > 40320 ||
-                                    timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                                event.reply("Invalid Duration! MAC Cancelled!").queue();
-                                removeUserFromMACMaps(event.getUser().getId());
-                                return;
-                            }
-                            try {
-                                MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
-                                Main.insertCase(target, action,data[2],event.getUser());
-                                g.getMember(UserSnowflake.fromId(modMapUser.get(event.getUser().getId()).getId())).timeoutFor(duration,timeUnit).queue();
-                                g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                                event.reply("Moderation Completed!").setEphemeral(true).queue();
-                                removeUserFromMACMaps(event.getUser().getId());
-                            } catch (NullPointerException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        if (data[1].equalsIgnoreCase("virtual-ban")) {
-                            ModerationCommandAction action = ModerationCommandAction.VIRTUALBAN;
-                            MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason);
-                            MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason);
-                            Main.insertCase(target,action,reason,event.getUser());
-                            sendMessage(target,vbPM);
-                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                            g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
-                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
+                        if (timeUnit == TimeUnit.DAYS && duration > 28 ||
+                                timeUnit == TimeUnit.HOURS && duration > 672 ||
+                                timeUnit == TimeUnit.MINUTES && duration > 40320 ||
+                                timeUnit == TimeUnit.SECONDS && duration > 2419200) {
+                            event.reply("Invalid Duration! MAC Cancelled!").queue();
                             removeUserFromMACMaps(event.getUser().getId());
                             return;
                         }
+                        try {
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
+                            Main.insertCase(target, action,data[2],event.getUser());
+                            g.getMember(UserSnowflake.fromId(modMapUser.get(event.getUser().getId()).getId())).timeoutFor(duration,timeUnit).queue();
+                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                            event.reply("Moderation Completed!").setEphemeral(true).queue();
+                            removeUserFromMACMaps(event.getUser().getId());
+                        } catch (NullPointerException e) {
+                            e.printStackTrace();
+                        }
                     }
-                    if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("confirm-no")) {
+                    if (data[1].equalsIgnoreCase("virtual-ban")) {
+                        ModerationCommandAction action = ModerationCommandAction.VIRTUALBAN;
+                        MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason);
+                        MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason);
+                        Main.insertCase(target,action,reason,event.getUser());
+                        sendMessage(target,vbPM);
+                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                        g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
+                        event.reply("Moderation Complete!").setEphemeral(true).queue();
                         removeUserFromMACMaps(event.getUser().getId());
-                        event.reply("Moderation Cancelled!").setEphemeral(true).queue();
-                        event.editSelectMenu(event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder("MAC Cancelled").build()).queue();
                         return;
                     }
-                }  catch (SQLException | ClassNotFoundException | NullPointerException  | IllegalArgumentException e){
-                    e.printStackTrace();
                 }
-
+                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("confirm-no")) {
+                    removeUserFromMACMaps(event.getUser().getId());
+                    event.reply("Moderation Cancelled!").setEphemeral(true).queue();
+                    event.editSelectMenu(event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder("MAC Cancelled").build()).queue();
+                }
+            }  catch (SQLException | ClassNotFoundException | NullPointerException  | IllegalArgumentException e){
+                e.printStackTrace();
             }
+
         }
     }
 

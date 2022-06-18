@@ -10,6 +10,7 @@ import net.twistedmc.shield.stats.Stats;
 import net.twistedmc.shield.twistedmc.servercommands.MessageCommand;
 import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
+import net.twistedmc.shield.twistedmc.servercommands.VirtBanCommand;
 
 import java.awt.*;
 import java.sql.*;
@@ -55,6 +56,7 @@ public final class Main extends Plugin {
         }
 
         getProxy().getPluginManager().registerCommand(this, new UsernameVerificationCommand());
+        getProxy().getPluginManager().registerCommand(this, new VirtBanCommand());
 
         BedWars = new BedWars("OTc1MzM5ODczOTQ5MDg1NzE2.GVt7cU.MD6gWVD-lQysPAdnW-MvX2tQgdwXrO0tDe4Upw");
         BedWars.start();

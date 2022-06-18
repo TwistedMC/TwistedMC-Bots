@@ -8,12 +8,17 @@ import net.md_5.bungee.api.plugin.Command;
 import net.twistedmc.shield.twistedmc.TwistedMC;
 
 import java.awt.*;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 public class UsernameVerificationCommand extends Command {
 
     public UsernameVerificationCommand() {
         super("usernameverification"); }
 
+    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+    int year = calendar.get(Calendar.YEAR);
+    String footer = "© " + year + " TwistedMC Studios";
 
     @SuppressWarnings("deprecation")
     @Override
@@ -30,9 +35,10 @@ public class UsernameVerificationCommand extends Command {
         eb.setColor(new Color(0, 148, 255));
 
         eb.setDescription("To interact with the Play.TwistedMC.Net Discord server, TwistedMC requires that you verify your Minecraft account.\n\nMake sure your private messages on your Discord account are set to enabled. Type **!link**, and then copy the command from the Accounts bot and login to play.twistedmc.net on Minecraft then execute the command!\n\nIf you have any trouble, let us know in <#912265941277106207>. Please note that we will not manually link your account under any circumstances.");
+        eb.setFooter(footer);
 
         TextChannel textChannel = TwistedMC.jda.getTextChannelById("797766853723684924");
-        textChannel.sendMessage((CharSequence) eb.build()).queue();
+        textChannel.sendMessageEmbeds(eb.build()).queue();
     }
 }
 

@@ -160,7 +160,7 @@ public class Stats extends ListenerAdapter {
                         if (Main.isMaintenance("Statistics") && event.getGuild().getOwnerIdLong() == 478410064919527437L) {
                             TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                             textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but this guild bypasses maintenances!").queue();
-                        } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L) {
+                        } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L || Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 208757906428919808L) {
                             TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                             textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but you bypass maintenances!").queue();
                         }
@@ -176,7 +176,7 @@ public class Stats extends ListenerAdapter {
                     if (Main.isMaintenance("Statistics") && event.getGuild().getOwnerIdLong() == 478410064919527437L) {
                         TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                         textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but this guild bypasses maintenances!").queue();
-                    } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L) {
+                    } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L || Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 208757906428919808L) {
                         TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                         textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but you bypass maintenances!").queue();
                     }
@@ -272,7 +272,7 @@ public class Stats extends ListenerAdapter {
                         if (Main.isMaintenance("Statistics") && event.getGuild().getOwnerIdLong() == 478410064919527437L) {
                             TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                             textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but this guild bypasses maintenances!").queue();
-                        } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L) {
+                        } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L || Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 208757906428919808L) {
                             TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                             textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but you bypass maintenances!").queue();
                         }
@@ -288,7 +288,7 @@ public class Stats extends ListenerAdapter {
                     if (Main.isMaintenance("Statistics") && event.getGuild().getOwnerIdLong() == 478410064919527437L) {
                         TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                         textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but this guild bypasses maintenances!").queue();
-                    } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L) {
+                    } else if (Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 478410064919527437L || Main.isMaintenance("Statistics") && event.getUser().getIdLong() == 208757906428919808L) {
                         TextChannel textChannel = event.getGuild().getTextChannelById(event.getChannel().getId());
                         textChannel.sendMessage("**ALERT!** This bot is currently under maintenance, but you bypass maintenances!").queue();
                     }
