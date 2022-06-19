@@ -39,7 +39,7 @@ public class VirtBanCommand extends Command {
         eb.setFooter(footer);
 
         TextChannel textChannel = TwistedMC.jda.getTextChannelById("837173424644161567");
-        textChannel.sendMessageEmbeds(eb.build()).setActionRow(Button.link("https://twistedmc.net/tickets/create/ticket_form_id=6/", "Submit a request")).queue();
+        textChannel.sendMessageEmbeds(eb.build()).setActionRow(Button.link("https://twistedmc.net/tickets/create?ticket_form_id=6&punishment_type=3", "Submit a request")).queue();
     }
 }
 

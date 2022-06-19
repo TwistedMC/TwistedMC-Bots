@@ -1003,12 +1003,15 @@ public class TwistedMC extends ListenerAdapter {
                         ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
                         String[] todata = modTimeout.get(event.getUser().getId());
                         String unit = todata[0];
-                        int duration = Integer.parseInt(todata[1]);
-                            /*if (!unit.equalsIgnoreCase("seconds") || !unit.equalsIgnoreCase("minutes") || !unit.equalsIgnoreCase("hours") || !unit.equalsIgnoreCase("days")) {
+                        assert unit != null;
+                        assert todata[1] != null;
+                        unit.trim();
+                        int duration = Integer.parseInt(todata[1].trim());
+                        if (!unit.equalsIgnoreCase("seconds") && !unit.equalsIgnoreCase("minutes") && !unit.equalsIgnoreCase("hours") && !unit.equalsIgnoreCase("days")) {
                                 event.reply("Invalid TimeUnit! MAC Cancelled!").setEphemeral(true).queue();
                                 removeUserFromMACMaps(event.getUser().getId());
                                 return;
-                            }*/
+                        }
                         TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
                         if (timeUnit == TimeUnit.DAYS && duration > 28 ||
                                 timeUnit == TimeUnit.HOURS && duration > 672 ||

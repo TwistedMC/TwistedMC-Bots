@@ -609,5 +609,54 @@ public final class Main extends Plugin {
 
         return vb.build();
     }
+    public static String generateRandomID() {
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        int length = 8;
+
+        for(int i = 0; i < length; i++) {
+            int index = random.nextInt(alphabet.length());
+            char randomChar = alphabet.charAt(index);
+            sb.append(randomChar);
+        }
+
+        String randomString = sb.toString();
+
+        return randomString;
+    }
+    public static String generateRandomID(int length) {
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+
+        for(int i = 0; i < length; i++) {
+            int index = random.nextInt(alphabet.length());
+            char randomChar = alphabet.charAt(index);
+            sb.append(randomChar);
+        }
+
+        String randomString = sb.toString();
+
+        return randomString;
+    }
+
+
+    public static void clearDiscordSync(String identifier) throws SQLException,
+            ClassNotFoundException {
+        MySQL MySQL = new MySQL("173.44.44.251", "3306", "network_sync", "network_sync",
+                "FJWUqCH5Auz9j2Wo");
+        Statement statement = MySQL.openConnection().createStatement();
+        try {
+            statement.executeUpdate("DELETE FROM `synced_players` WHERE identifier = '" + identifier + "'");
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) { }
+            }
+            MySQL.closeConnection();
+        }
+    }
 
 }
