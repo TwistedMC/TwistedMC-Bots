@@ -891,7 +891,7 @@ public class TwistedMC extends ListenerAdapter {
                     TextInput timeunitInput = TextInput.create("mac:to:duration", "Duration of Timeout", TextInputStyle.SHORT)
                             .setRequired(true)
                             .setPlaceholder("Insert timeout duration (Max 28 days)")
-                            .setRequiredRange(1, 20)
+                            .setRequiredRange(1, 10)
                             .build();
                     TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
                             .setRequired(true)
@@ -1024,7 +1024,7 @@ public class TwistedMC extends ListenerAdapter {
                         try {
                             MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                             Main.insertCase(target, action,data[2],event.getUser());
-                            g.getMember(UserSnowflake.fromId(modMapUser.get(event.getUser().getId()).getId())).timeoutFor(duration,timeUnit).queue();
+                            g.getMember(UserSnowflake.fromId(target.getId())).timeoutFor(duration,timeUnit).queue();
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
                             MessageEmbed vbPM = Main.generateBanEmbed(reason);
@@ -1032,6 +1032,7 @@ public class TwistedMC extends ListenerAdapter {
 
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
                             removeUserFromMACMaps(event.getUser().getId());
+                            return;
                         } catch (NullPointerException e) {
                             e.printStackTrace();
                         }
