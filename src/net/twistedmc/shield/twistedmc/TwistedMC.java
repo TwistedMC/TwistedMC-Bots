@@ -568,10 +568,10 @@ public class TwistedMC extends ListenerAdapter {
                             MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                             Main.insertCase(target, action,data[2],event.getUser());
 
-                            MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason);
                             sendMessage(target,vbPM, "1");
 
-                            g.getMember(UserSnowflake.fromId(modMapUser.get(event.getUser().getId()).getId())).timeoutFor(duration,timeUnit).queue();
+                            g.getMember(UserSnowflake.fromId(target.getId())).timeoutFor(duration,timeUnit).queue();
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
                             removeUserFromMACMaps(event.getUser().getId());
