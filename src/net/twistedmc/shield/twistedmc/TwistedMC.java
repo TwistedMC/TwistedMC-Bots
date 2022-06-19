@@ -71,8 +71,8 @@ public class TwistedMC extends ListenerAdapter {
             this.jda = JDABuilder.createDefault(token).build();
             jda.awaitReady();
             jda.addEventListener(this);
-            jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
-            jda.getPresence().setPresence(Activity.playing("Under Maintenance"), false);
+            //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
+            jda.getPresence().setPresence(Activity.playing("We're online!"), false);
             jda.getGuildById(GuildID).upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             jda.updateCommands().queue();
