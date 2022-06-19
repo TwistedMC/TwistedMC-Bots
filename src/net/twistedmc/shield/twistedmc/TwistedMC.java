@@ -891,7 +891,7 @@ public class TwistedMC extends ListenerAdapter {
                     TextInput timeunitInput = TextInput.create("mac:to:duration", "Duration of Timeout", TextInputStyle.SHORT)
                             .setRequired(true)
                             .setPlaceholder("Insert timeout duration (Max 28 days)")
-                            .setRequiredRange(1, 2)
+                            .setRequiredRange(1, 20)
                             .build();
                     TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
                             .setRequired(true)
