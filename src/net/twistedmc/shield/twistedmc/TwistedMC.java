@@ -19,6 +19,10 @@ import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteract
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.managers.channel.ChannelManager;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.ChunkingFilter;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import net.twistedmc.shield.Util.ModerationCommandAction;
@@ -52,6 +56,7 @@ public class TwistedMC extends ListenerAdapter {
     private static HashMap<String,Boolean> modConfirmBypass = new HashMap<>(); // Key: DiscordID of sender; Value: true or false
     private static HashMap<String,String[]> modTimeout = new HashMap<>();
     private static HashMap<String,Boolean> appealUserConfirmed = new HashMap<>(); // K: DID of sender; V: t/f
+    private static HashMap<User,User> timeoutMember = new HashMap<>();
     private static HashMap[] maps = {modMap,modMapUser,modConfirmBypass,modTimeout,appealUserConfirmed};
     private static ArrayList<HashMap> macMaps = new ArrayList<>();
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
@@ -64,11 +69,15 @@ public class TwistedMC extends ListenerAdapter {
 
     public void start(){
         try {
+            jda = JDABuilder.createDefault(token)
+                    .enableIntents(GatewayIntent.GUILD_MEMBERS)
+                    .setMemberCachePolicy(MemberCachePolicy.ALL)
+                    .setChunkingFilter(ChunkingFilter.ALL).build();
             macMaps.add(modMap);
             macMaps.add(modConfirmBypass);
             macMaps.add(modMapUser);
             macMaps.add(modTimeout);
-            this.jda = JDABuilder.createDefault(token).build();
+            macMaps.add(timeoutMember);
             jda.awaitReady();
             jda.addEventListener(this);
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
@@ -87,6 +96,10 @@ public class TwistedMC extends ListenerAdapter {
             jda.getGuildById(GuildID).upsertCommand("moderate","Moderate a user with different options")
                     .addOption(OptionType.USER,"user","User to Moderate",true)
                     .addOption(OptionType.BOOLEAN,"bypass","Bypass the final confirmation?",false)
+                    .queue();
+            jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("timeout","Timeout a user")
+                    .addOption(OptionType.USER,"user","User to Timeout",true)
                     .queue();
             jda.updateCommands().queue();
             jda.getGuildById(GuildID).upsertCommand("maintenance", "Send Maintenance Alert in #sync")
@@ -276,6 +289,7 @@ public class TwistedMC extends ListenerAdapter {
             String[] data = {user.getId(),"",""};
             modMapUser.put(event.getUser().getId(),user);
             modMap.put(event.getUser().getId(),data);
+            timeoutMember.put(event.getUser(), Objects.requireNonNull(event.getOption("user")).getAsUser());
             SelectMenu menu = SelectMenu.create("menu:modaction")
                     .setPlaceholder("Select Moderation Action Command")
                     .setRequiredRange(1, 1)
@@ -547,14 +561,9 @@ public class TwistedMC extends ListenerAdapter {
                         return;
                     }
                     if (data[1].equalsIgnoreCase("timeout")) {
-                        ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
+                         ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
                         String unit = event.getValue("mac:to:unit").getAsString();
                         int duration = Integer.parseInt(event.getValue("mac:to:duration").getAsString());
-                        /*if (!unit.equalsIgnoreCase("seconds") || !unit.equalsIgnoreCase("minutes") || !unit.equalsIgnoreCase("hours") || !unit.equalsIgnoreCase("days")) {
-                                event.reply("Invalid TimeUnit! MAC Cancelled!").setEphemeral(true).queue();
-                                removeUserFromMACMaps(event.getUser().getId());
-                                return;
-                            }*/
                         TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
                         if (timeUnit == TimeUnit.DAYS && duration > 28 ||
                                 timeUnit == TimeUnit.HOURS && duration > 672 ||
@@ -568,10 +577,13 @@ public class TwistedMC extends ListenerAdapter {
                             MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                             Main.insertCase(target, action,data[2],event.getUser());
 
+                            User user = timeoutMember.get(event.getUser());
+
+                            jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(event.getValue("mac:to:duration").getAsString()), TimeUnit.valueOf(unit)).queue();
+
                             MessageEmbed vbPM = Main.generateTimeoutEmbed(reason);
                             sendMessage(target,vbPM, "1");
 
-                            g.getMember(UserSnowflake.fromId(target.getId())).timeoutFor(duration,timeUnit).queue();
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
                             removeUserFromMACMaps(event.getUser().getId());
@@ -1024,10 +1036,14 @@ public class TwistedMC extends ListenerAdapter {
                         try {
                             MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
                             Main.insertCase(target, action,data[2],event.getUser());
-                            g.getMember(UserSnowflake.fromId(target.getId())).timeoutFor(duration,timeUnit).queue();
+
+                            User user = timeoutMember.get(event.getUser());
+
+                            jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(String.valueOf(duration)), TimeUnit.valueOf(unit)).queue();
+
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                            MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason);
                             sendMessage(target,vbPM, "1");
 
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
