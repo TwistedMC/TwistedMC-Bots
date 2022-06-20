@@ -8,21 +8,17 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.Modal;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
-import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.managers.channel.ChannelManager;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
-import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import net.twistedmc.shield.Util.ModerationCommandAction;
@@ -266,6 +262,17 @@ public class TwistedMC extends ListenerAdapter {
                 event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
                 return;
             }
+
+            Member member = event.getMember();
+
+            EnumSet<Permission> memPerms = member.getPermissions();
+            boolean memCanMute = memPerms.toString().contains(Permission.MODERATE_MEMBERS.name());
+
+            if (!memCanMute) {
+                event.reply("**ERROR!** You do not have permission to use **/moderate**!").setEphemeral(true).queue();
+                return;
+            }
+
             User user = event.getOption("user").getAsUser();
             if (modConfirmBypass.containsKey(event.getUser().getId())) {
                 modConfirmBypass.remove(event.getUser().getId());
@@ -429,6 +436,49 @@ public class TwistedMC extends ListenerAdapter {
             }
             return;
         }
+
+        if (event.getName().equals("timeout")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("<:danger:869367070591189014> **HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            } else if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
+                event.reply("You cannot use **/timeout** in this guild!").setEphemeral(true).queue();
+                return;
+            }
+
+            Member member = event.getMember();
+
+            EnumSet<Permission> memPerms = member.getPermissions();
+            boolean memCanMute = memPerms.toString().contains(Permission.MODERATE_MEMBERS.name());
+
+            if (!memCanMute) {
+                event.reply("**ERROR!** You do not have permission to use **/timeout**!").setEphemeral(true).queue();
+                return;
+            }
+
+            timeoutMember.put(event.getUser(), Objects.requireNonNull(event.getOption("user")).getAsUser());
+
+            TextInput reason = TextInput.create("timeout:reason","Reason for Timeout", TextInputStyle.PARAGRAPH)
+                    .setPlaceholder("Insert reason for moderating this user")
+                    .setRequiredRange(2,2000)
+                    .build();
+            TextInput duration = TextInput.create("timeout:duration","Duration of Timeout", TextInputStyle.SHORT)
+                    .setPlaceholder("Insert timeout duration (Max 28 days)")
+                    .setRequiredRange(1, 10)
+                    .build();
+            TextInput timeunit = TextInput.create("timeout:timeunit","imeUnit.valueOf() Unit.", TextInputStyle.SHORT)
+                    .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
+                    .setRequiredRange(1, 50)
+                    .build();
+
+            Modal m = Modal.create("timeout:timeout","Timeout a user")
+                    .addActionRows(ActionRow.of(reason),ActionRow.of(duration),ActionRow.of(timeunit))
+                    .build();
+
+            event.replyModal(m).queue();
+            return;
+        }
     }
 
     @Override
@@ -464,6 +514,72 @@ public class TwistedMC extends ListenerAdapter {
 
             ticket.sendMessageEmbeds(eb.build()).content(event.getMember().getAsMention() + " use this channel to post any other information or screenshots that can help us out :)").queue();
             event.reply("Thank you for your bug report!").setEphemeral(true).queue();
+        }
+
+        if (event.getModalId().equalsIgnoreCase("timeout:timeout")) {
+            Guild g = getJDA().getGuildById(GuildID);
+            ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
+            String reasonValue = event.getValue("timeout:reason").getAsString();
+            String durationValue = event.getValue("timeout:duration").getAsString();
+            String timeunitValue = event.getValue("timeout:timeunit").getAsString();
+
+            if (durationValue.matches("[a-zA-Z]+")){
+                event.reply("Invalid duration! Integer required!").setEphemeral(true).queue();
+                timeoutMember.remove(event.getUser());
+                return;
+            }
+
+            int duration = Integer.parseInt(durationValue);
+
+            if (!timeunitValue.equalsIgnoreCase("seconds") && !timeunitValue.equalsIgnoreCase("minutes") && !timeunitValue.equalsIgnoreCase("hours") && !timeunitValue.equalsIgnoreCase("days")) {
+                event.reply("Invalid TimeUnit! MAC Cancelled!").setEphemeral(true).queue();
+                timeoutMember.remove(event.getUser());
+                return;
+            }
+            TimeUnit timeUnit = TimeUnit.valueOf(timeunitValue.toUpperCase());
+            if (timeUnit == TimeUnit.DAYS && duration > 28 ||
+                    timeUnit == TimeUnit.HOURS && duration > 672 ||
+                    timeUnit == TimeUnit.MINUTES && duration > 40320 ||
+                    timeUnit == TimeUnit.SECONDS && duration > 2419200) {
+                event.reply("Invalid Duration! MAC Cancelled!").queue();
+                timeoutMember.remove(event.getUser());
+                return;
+            }
+            try {
+                User user = timeoutMember.get(event.getUser());
+                assert g != null;
+                Member member = g.getMember(user);
+
+                EnumSet<Permission> memPerms = member.getPermissions();
+                boolean memIsAdmin = memPerms.toString().contains(Permission.ADMINISTRATOR.name());
+
+                if (member.isTimedOut()) {
+                    event.reply("This user is already timed out!").setEphemeral(true).queue();
+                    timeoutMember.remove(event.getUser());
+                    return;
+                }
+
+                if (memIsAdmin) {
+                    event.reply("You cannot timeout this user!").setEphemeral(true).queue();
+                    timeoutMember.remove(event.getUser());
+                } else if (!memIsAdmin) {
+                    MessageEmbed log = Main.generateModlog(event.getUser(), timeoutMember.get(event.getUser()), action, reasonValue);
+                    Main.insertCase(timeoutMember.get(event.getUser()), action, reasonValue, event.getUser());
+
+                    jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(String.valueOf(duration)), TimeUnit.valueOf(timeunitValue)).queue();
+
+                    g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+
+                    MessageEmbed vbPM = Main.generateTimeoutEmbed(reasonValue);
+                    sendMessage(timeoutMember.get(event.getUser()), vbPM, "1");
+
+                    event.reply("Moderation Completed!").setEphemeral(true).queue();
+                    timeoutMember.remove(event.getUser());
+                }
+                return;
+            } catch (NullPointerException | SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
         }
 
         if (event.getModalId().equalsIgnoreCase("suggestion")) {
