@@ -467,7 +467,7 @@ public class TwistedMC extends ListenerAdapter {
                     .setPlaceholder("Insert timeout duration (Max 28 days)")
                     .setRequiredRange(1, 10)
                     .build();
-            TextInput timeunit = TextInput.create("timeout:timeunit","imeUnit.valueOf() Unit.", TextInputStyle.SHORT)
+            TextInput timeunit = TextInput.create("timeout:timeunit","TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
                     .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
                     .setRequiredRange(1, 50)
                     .build();
