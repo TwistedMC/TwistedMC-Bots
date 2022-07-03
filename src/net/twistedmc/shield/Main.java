@@ -2,9 +2,7 @@ package net.twistedmc.shield;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.Util.ModerationCommandAction;
 import net.twistedmc.shield.bedwars.BedWars;
@@ -477,7 +475,7 @@ public final class Main extends Plugin {
         return null;
     }
 
-    public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason) throws SQLException, ClassNotFoundException{
+    public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason,String caseID) throws SQLException, ClassNotFoundException{
         if (reason.equals("")) { reason = action.getDefaultReason(); }
         EmbedBuilder log = new EmbedBuilder();
         String Cases = "";
@@ -487,6 +485,7 @@ public final class Main extends Plugin {
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("**Moderator**","**`" + author.getAsTag() + "`** (**`" + author.getId() + "`**)",true);
         log.addField("**Moderated User**","**`" + moderated.getAsTag() + "`** (**`" + moderated.getId() + "`**)",true);
+        log.addField("**Case ID**","**`" + caseID + "`**",true);
         log.addBlankField(true);
         log.addField("**Action**","**`" + action.getActionLabel() + "`**",false);
         log.addField("**Reason**","**`" + reason + "`**",false);
@@ -522,16 +521,16 @@ public final class Main extends Plugin {
         }
         return Cases;
     }
-    public static void insertCase(User target, ModerationCommandAction action, String reason, User moderator) throws SQLException, ClassNotFoundException {
+    public static void insertCase(User target, ModerationCommandAction action, String reason, User moderator,String caseID) throws SQLException, ClassNotFoundException {
         SimpleDateFormat format = new SimpleDateFormat("MMM dd, yyyy hh:mma");
         TimeZone etTimeZone = TimeZone.getTimeZone("America/New_York");
         format.setTimeZone(etTimeZone);
         MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement st = MySQL.openConnection().createStatement();
         try {
-            st.executeUpdate("INSERT INTO `discord_punishments`(`id`, `user`,`action`,`reason`,`moderator`,`timestamp`) " +
+            st.executeUpdate("INSERT INTO `discord_punishments`(`id`, `user`,`action`,`reason`,`moderator`,`timestamp`,`caseID`) " +
                     "VALUES (0,'" + target.getAsTag() + "(" + target.getId() + ")','" + action.getActionLabel() + "','"
-                    + reason + "','" + moderator.getAsTag() + "(" + moderator.getId() + ")','" + format.format(new java.util.Date()) + "')");
+                    + reason + "','" + moderator.getAsTag() + "(" + moderator.getId() + ")','" + format.format(new java.util.Date()) + "','" + caseID +"')");
             //st.close();
             //st.getConnection().close();
         } catch (SQLException | NullPointerException e){
@@ -546,31 +545,33 @@ public final class Main extends Plugin {
         }
     }
 
-    public static MessageEmbed generateBanEmbed(String reason) {
+    public static MessageEmbed generateBanEmbed(String reason,String caseID) {
         if (reason.equals("")) { reason = "Banned by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been banned!");
         log.setDescription("You have been banned from the TwistedMC Discord server!");
         log.setColor(new Color(255, 0, 0));
         log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Case ID**",caseID,false);
         log.addField("**Reason**",reason,false);
         log.setFooter(footer);
         return log.build();
     }
 
-    public static MessageEmbed generateTimeoutEmbed(String reason) {
+    public static MessageEmbed generateTimeoutEmbed(String reason,String caseID) {
         if (reason.equals("")) { reason = "Timed out by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been timed out!");
         log.setDescription("You have been timed in the TwistedMC Discord server!");
         log.setColor(new Color(175, 66, 0));
         log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Case ID**",caseID,false);
         log.addField("**Reason**",reason,false);
         log.setFooter(footer);
         return log.build();
     }
 
-    public static MessageEmbed generateKickEmbed(String reason) {
+    public static MessageEmbed generateKickEmbed(String reason,String caseID) {
         if (reason.equals("")) { reason = "Kicked by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been kicked!");
@@ -583,19 +584,20 @@ public final class Main extends Plugin {
     }
 
 
-    public static MessageEmbed generatewarnEmbed(String reason) {
+    public static MessageEmbed generatewarnEmbed(String reason,String caseID) {
         if (reason.equals("")) { reason = "Warned by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've received a warning!");
         log.setDescription("**This is just a warning to inform you the behavior below is not allowed in the TwistedMC Discord server.**\nIf you continue this behavior, you may be moderated further.");
         log.setColor(new Color(253, 216, 1));
         log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Case ID**",caseID,false);
         log.addField("**Reason**",reason,false);
         log.setFooter(footer);
         return log.build();
     }
 
-    public static MessageEmbed generateVirtualBanEmbed(String reason) {
+    public static MessageEmbed generateVirtualBanEmbed(String reason,String caseID) {
         if (reason.equalsIgnoreCase("")) { reason = ModerationCommandAction.VIRTUALBAN.getDefaultReason(); }
         EmbedBuilder vb = new EmbedBuilder();
 
@@ -604,6 +606,7 @@ public final class Main extends Plugin {
         vb.setColor(new Color(35, 35, 35));
 
         vb.setDescription("Sorry about that, maybe you can make an appeal. Otherwise, you'll no longer be able to participate in the TwistedMC Discord server."
+                + "\n\n__**Case ID:**__\n*`" + reason + "`*"
                 + "\n\n__**Reason for Virtual Ban:**__\n*`" + reason + "`*");
         vb.setFooter(footer);
 

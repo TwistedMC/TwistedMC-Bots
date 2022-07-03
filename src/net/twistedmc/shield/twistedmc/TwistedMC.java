@@ -27,7 +27,6 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
-import java.sql.Time;
 import java.util.*;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,7 +34,6 @@ import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 public class TwistedMC extends ListenerAdapter {
 
@@ -153,6 +151,11 @@ public class TwistedMC extends ListenerAdapter {
     public static void sendMessage(User user, String content, int delay) {
         user.openPrivateChannel()
                 .flatMap(channel -> channel.sendMessage(content))
+                .queue(m -> m.delete().queueAfter(delay, TimeUnit.SECONDS));
+    }
+    public static void sendMessage(User user, String content,Collection<MessageEmbed> embeds, int delay) {
+        user.openPrivateChannel()
+                .flatMap(channel -> channel.sendMessage(content).setEmbeds(embeds))
                 .queue(m -> m.delete().queueAfter(delay, TimeUnit.SECONDS));
     }
 
@@ -563,14 +566,16 @@ public class TwistedMC extends ListenerAdapter {
                     event.reply("You cannot timeout this user!").setEphemeral(true).queue();
                     timeoutMember.remove(event.getUser());
                 } else if (!memIsAdmin) {
-                    MessageEmbed log = Main.generateModlog(event.getUser(), timeoutMember.get(event.getUser()), action, reasonValue);
-                    Main.insertCase(timeoutMember.get(event.getUser()), action, reasonValue, event.getUser());
+                    String caseID = "#D-" + Main.generateRandomID(7);
+                    MessageEmbed log = Main.generateModlog(event.getUser(), timeoutMember.get(event.getUser()), action, reasonValue,caseID);
+
+                    Main.insertCase(timeoutMember.get(event.getUser()), action, reasonValue, event.getUser(), caseID);
 
                     jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(String.valueOf(duration)), TimeUnit.valueOf(timeunitValue)).queue();
 
                     g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                    MessageEmbed vbPM = Main.generateTimeoutEmbed(reasonValue);
+                    MessageEmbed vbPM = Main.generateTimeoutEmbed(reasonValue,caseID);
                     sendMessage(timeoutMember.get(event.getUser()), vbPM, "1");
 
                     event.reply("Moderation Completed!").setEphemeral(true).queue();
@@ -628,12 +633,12 @@ public class TwistedMC extends ListenerAdapter {
                 if (modConfirmBypass.get(event.getUser().getId())) {
                     if (data[1].equalsIgnoreCase("kick")) {
                         ModerationCommandAction action = ModerationCommandAction.KICK;
-
-                        MessageEmbed vbPM = Main.generateKickEmbed(reason);
+                        String caseID = "#D-" + Main.generateRandomID(7);
+                        MessageEmbed vbPM = Main.generateKickEmbed(reason,caseID);
                         sendMessageKick(target,vbPM);
-
+                        Main.insertCase(target, action,data[2],event.getUser(), caseID);
                         g.kick(UserSnowflake.fromId(target.getId()),reason).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
                         removeUserFromMACMaps(event.getUser().getId());
@@ -641,13 +646,13 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("ban")) {
                         ModerationCommandAction action = ModerationCommandAction.BAN;
-
-                        MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                        String caseID = "#D-" + Main.generateRandomID(7);
+                        MessageEmbed vbPM = Main.generateBanEmbed(reason, caseID);
                         sendMessage(target,vbPM, "2");
 
                         g.ban(UserSnowflake.fromId(target.getId()),1,reason).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
-                        Main.insertCase(target, action,data[2],event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
+                        Main.insertCase(target, action,data[2],event.getUser(), caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
                         removeUserFromMACMaps(event.getUser().getId());
@@ -655,9 +660,10 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("warning")) {
                         ModerationCommandAction action = ModerationCommandAction.WARN;
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
-                        Main.insertCase(target, action,data[2],event.getUser());
-                        MessageEmbed warn = Main.generatewarnEmbed(reason);
+                        String caseID = "#D-" + Main.generateRandomID(7);
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
+                        Main.insertCase(target, action,data[2],event.getUser(), caseID);
+                        MessageEmbed warn = Main.generatewarnEmbed(reason,caseID);
                         sendMessage(target,warn);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
@@ -666,9 +672,10 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("virtual-ban")) {
                         ModerationCommandAction action = ModerationCommandAction.VIRTUALBAN;
-                        MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason);
-                        MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason);
-                        Main.insertCase(target,action,reason,event.getUser());
+                        String caseID = "#D-" + Main.generateRandomID(7);
+                        MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason,caseID);
+                        MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason,caseID );
+                        Main.insertCase(target,action,reason,event.getUser(),caseID );
                         sendMessage(target,vbPM, "3");
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
@@ -678,6 +685,7 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("timeout")) {
                          ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
+                        String caseID = "#D-" + Main.generateRandomID(7);
                         String unit = event.getValue("mac:to:unit").getAsString();
                         int duration = Integer.parseInt(event.getValue("mac:to:duration").getAsString());
                         TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
@@ -690,14 +698,14 @@ public class TwistedMC extends ListenerAdapter {
                             return;
                         }
                         try {
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
-                            Main.insertCase(target, action,data[2],event.getUser());
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
+                            Main.insertCase(target, action,data[2],event.getUser(), caseID);
 
                             User user = timeoutMember.get(event.getUser());
 
                             jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(event.getValue("mac:to:duration").getAsString()), TimeUnit.valueOf(unit)).queue();
 
-                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason);
+                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID);
                             sendMessage(target,vbPM, "1");
 
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
@@ -902,11 +910,12 @@ public class TwistedMC extends ListenerAdapter {
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-ca")) {
                     if (modConfirmBypass.get(event.getUser().getId())) {
+                        String caseID = "#D-" + Main.generateRandomID(7);
                         User target = modMapUser.get(event.getUser().getId());
                         Guild g = getJDA().getGuildById(GuildID);
                         g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason());
-                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(),caseID);
+                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         event.editSelectMenu(fakemenu).queue();
                         return;
@@ -940,10 +949,11 @@ public class TwistedMC extends ListenerAdapter {
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-uau")) {
                     if (modConfirmBypass.get(event.getUser().getId())) {
                         User target = modMapUser.get(event.getUser().getId());
+                        String caseID = "#D-" + Main.generateRandomID(7);
                         Guild g = getJDA().getGuildById(GuildID);
                         g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason());
-                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, data[2], event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(),caseID);
+                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, data[2], event.getUser(), caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         event.editSelectMenu(fakemenu).queue();
                         return;
@@ -1064,13 +1074,14 @@ public class TwistedMC extends ListenerAdapter {
                     User target = modMapUser.get(event.getUser().getId());
                     Guild g = getJDA().getGuildById(GuildID);
                     String reason = data[2];
+                    String caseID = "#D-" + Main.generateRandomID(7);
                     if (data[1].equalsIgnoreCase("kick")) {
                         ModerationCommandAction action = ModerationCommandAction.KICK;
-                        Main.insertCase(target,action,reason,event.getUser());
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        Main.insertCase(target,action,reason,event.getUser(), caseID);
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason,caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                        MessageEmbed vbPM = Main.generateKickEmbed(reason);
+                        MessageEmbed vbPM = Main.generateKickEmbed(reason,caseID);
                         sendMessageKick(target,vbPM);
 
                         g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
@@ -1080,11 +1091,11 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("ban")) {
                         ModerationCommandAction action = ModerationCommandAction.BAN;
-                        Main.insertCase(target,action,reason,event.getUser());
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        Main.insertCase(target,action,reason,event.getUser(),caseID );
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason,caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                        MessageEmbed vbPM = Main.generateBanEmbed(reason);
+                        MessageEmbed vbPM = Main.generateBanEmbed(reason, caseID);
                         sendMessage(target,vbPM, "2");
 
                         g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
@@ -1094,11 +1105,11 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("warning")) {
                         ModerationCommandAction action = ModerationCommandAction.WARN;
-                        Main.insertCase(target, action, data[2], event.getUser());
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason);
+                        Main.insertCase(target, action, data[2], event.getUser(), caseID);
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, action, reason,caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                        MessageEmbed warn = Main.generatewarnEmbed(reason);
+                        MessageEmbed warn = Main.generatewarnEmbed(reason,caseID);
                         sendMessage(target, warn);
 
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
@@ -1107,8 +1118,8 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("ca-ban")) {
                         g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason());
-                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(),caseID);
+                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID);
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         event.editSelectMenu(fakemenu).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
@@ -1116,11 +1127,11 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("underage-ban")) {
                         g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason());
-                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(),caseID);
+                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser(),caseID );
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                        MessageEmbed vbPM = Main.generateBanEmbed(ModerationCommandAction.UNDERAGE.getDefaultReason());
+                        MessageEmbed vbPM = Main.generateBanEmbed(ModerationCommandAction.UNDERAGE.getDefaultReason(), caseID);
                         sendMessage(target,vbPM, "2");
 
                         event.editSelectMenu(fakemenu).queue();
@@ -1150,8 +1161,8 @@ public class TwistedMC extends ListenerAdapter {
                             return;
                         }
                         try {
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason);
-                            Main.insertCase(target, action,data[2],event.getUser());
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
+                            Main.insertCase(target, action,data[2],event.getUser(), caseID);
 
                             User user = timeoutMember.get(event.getUser());
 
@@ -1159,7 +1170,7 @@ public class TwistedMC extends ListenerAdapter {
 
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason);
+                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID);
                             sendMessage(target,vbPM, "1");
 
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
@@ -1171,9 +1182,9 @@ public class TwistedMC extends ListenerAdapter {
                     }
                     if (data[1].equalsIgnoreCase("virtual-ban")) {
                         ModerationCommandAction action = ModerationCommandAction.VIRTUALBAN;
-                        MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason);
-                        MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason);
-                        Main.insertCase(target,action,reason,event.getUser());
+                        MessageEmbed log = Main.generateModlog(event.getUser(),target,action,reason,caseID);
+                        MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason,caseID );
+                        Main.insertCase(target,action,reason,event.getUser(),caseID );
                         sendMessage(target,vbPM, "3");
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
@@ -1186,6 +1197,8 @@ public class TwistedMC extends ListenerAdapter {
                     removeUserFromMACMaps(event.getUser().getId());
                     event.reply("Moderation Cancelled!").setEphemeral(true).queue();
                     event.editSelectMenu(event.getSelectMenu().createCopy().setDisabled(true).setPlaceholder("MAC Cancelled").build()).queue();
+                    removeUserFromMACMaps(event.getUser().getId());
+                    return;
                 }
             }  catch (SQLException | ClassNotFoundException | NullPointerException  | IllegalArgumentException e){
                 e.printStackTrace();
