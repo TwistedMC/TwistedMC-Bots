@@ -36,15 +36,23 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TwistedMC extends ListenerAdapter {
-
+    // MAIN VARS
     private String token;
     public static JDA jda;
     public static boolean StatusNotifs = false;
 
-
+    // STRINGS
     public static String GuildID = "549595806009786388";
     public static String VirtualBanRoleID = "837168599814373416";
     public static String ModlogChannelID = "772160218477756419";
+    public static String SyncRoleID = "797737410514780201";
+    // MAC ROLES
+    public static String OwnerRole = "764680567202775041"; // All
+    public static String AdminRole = "591746925955514379"; // srMod + Virt Ban
+    public static String srModRole = "868225404723413072"; // Mod + Bans
+    public static String ModeratorRole = "591746931840122906"; // Helper + Kicks
+    public static String HelperRole = "591746933572239382"; // Warns & Timeouts
+    // HASHMAPS
     private static HashMap<String,String[]> modMap = new HashMap<>(); // Key: DiscordID of sender; Values: String[] = {userID,Action,Reason}; (3)
     private static HashMap<String,User> modMapUser = new HashMap<>();
     private static HashMap<String,Boolean> modConfirmBypass = new HashMap<>(); // Key: DiscordID of sender; Value: true or false
@@ -53,6 +61,7 @@ public class TwistedMC extends ListenerAdapter {
     private static HashMap<User,User> timeoutMember = new HashMap<>();
     private static HashMap[] maps = {modMap,modMapUser,modConfirmBypass,modTimeout,appealUserConfirmed};
     private static ArrayList<HashMap> macMaps = new ArrayList<>();
+    // OTHER
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
     int year = calendar.get(Calendar.YEAR);
     String footer = "© " + year + " TwistedMC Studios";
@@ -87,6 +96,11 @@ public class TwistedMC extends ListenerAdapter {
             jda.updateCommands().queue();
             jda.getGuildById(GuildID).upsertCommand("feedback", "Give us feedback!").queue();
             jda.updateCommands().queue();
+            jda.getGuildById(GuildID).upsertCommand("searchcase","View a discord punishment case")
+                    .addOption(OptionType.STRING,"caseid","Case ID of the punishment",true).queue();
+            jda.getGuildById(GuildID).upsertCommand("appeal","Appeal a virtual ban case.")
+                            .addOption(OptionType.USER,"user","User to appeal",true)
+                    .addOption(OptionType.STRING,"reason","reason for appeal",false).queue();
             jda.getGuildById(GuildID).upsertCommand("moderate","Moderate a user with different options")
                     .addOption(OptionType.USER,"user","User to Moderate",true)
                     .addOption(OptionType.BOOLEAN,"bypass","Bypass the final confirmation?",false)
@@ -197,6 +211,62 @@ public class TwistedMC extends ListenerAdapter {
             return;
         }
 
+        if (event.getName().equals("searchcase")) {
+            String id = event.getOption("caseid").getAsString();
+            if (event.getChannel().getId().equals("771076746534584371")) {
+                event.deferReply(true).queue(hook -> {
+                    try {
+                        if (Main.caseExists(id)) {
+                            MySQL MySQL_rs = new MySQL(Main.sqlHostDM, Main.sqlPortDM, Main.sqlDbDM, Main.sqlUserDM, Main.sqlPwDM);
+                            Statement statement1_rs = MySQL_rs.openConnection().createStatement();
+                            ResultSet resultSet = statement1_rs.executeQuery("SELECT * FROM `discord_punishments` WHERE `caseID`='" + id + "'");
+                            try {
+                                while (resultSet.next()) {
+                                    EmbedBuilder embedBuilder = new EmbedBuilder();
+                                    embedBuilder.setFooter(footer);
+                                    embedBuilder.setTimestamp(new Date().toInstant());
+                                    embedBuilder.setColor(new Color(115, 192, 195));
+                                    embedBuilder.setTitle("Viewing Case: " + id);
+                                    embedBuilder.setDescription("__**The information on this embed is under NDA. It is for review purposes only.**__");
+                                    embedBuilder.addField("**User**", resultSet.getString("user"), true);
+                                    embedBuilder.addField("**Moderator**", resultSet.getString("moderator"), true);
+                                    embedBuilder.addBlankField(true);
+                                    embedBuilder.addField("**Action**", resultSet.getString("action"), true);
+                                    embedBuilder.addField("**Timestamp**", resultSet.getString("timestamp"), true);
+                                    embedBuilder.addField("**Reason**", resultSet.getString("reason"), false);
+                                    hook.editOriginalEmbeds().setEmbeds(embedBuilder.build()).queue();
+                                    embedBuilder.clear();
+                                    embedBuilder = null;
+                                    return;
+                                }
+                            } catch (SQLException e) {
+                                e.printStackTrace();
+                            } finally {
+                                resultSet.close();
+                                statement1_rs.close();
+                                MySQL_rs.getConnection().close();
+                            }
+                        } else {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setDescription("Case with ID **[**`" + id + "`**]** could not be found!");
+                            emb.setTimestamp(new Date().toInstant());
+                            emb.setFooter(footer);
+                            hook.editOriginalEmbeds().setEmbeds(emb.build()).queue();
+                            emb.clear();
+                            emb = null;
+                            return;
+                        }
+                    } catch (SQLException | ClassNotFoundException e) {
+                        e.printStackTrace();
+                        event.reply("Something went wrong!").setEphemeral(true).queue();
+                    }
+                });
+            } else {
+                event.reply("**This command can only be used in a specific channel.**").setEphemeral(true).queue();
+                return;
+            }
+        }
         if (event.getName().equals("bugreport")) {
 
             if (!event.isFromGuild()) {
@@ -567,7 +637,21 @@ public class TwistedMC extends ListenerAdapter {
                     timeoutMember.remove(event.getUser());
                 } else if (!memIsAdmin) {
                     String caseID = "#D-" + Main.generateRandomID(7);
-                    MessageEmbed log = Main.generateModlog(event.getUser(), timeoutMember.get(event.getUser()), action, reasonValue,caseID);
+                    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+                    if (timeUnit.equals(TimeUnit.DAYS)) {
+                        calendar.add(Calendar.DATE,duration);
+                    }
+                    if (timeUnit.equals(TimeUnit.HOURS)) {
+                        calendar.add(Calendar.HOUR,duration);
+                    }
+                    if (timeUnit.equals(TimeUnit.MINUTES)) {
+                        calendar.add(Calendar.MINUTE,duration);
+                    }
+                    if (timeUnit.equals(TimeUnit.SECONDS)) {
+                        calendar.add(Calendar.SECOND,duration);
+                    }
+                    SimpleDateFormat format = new SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a 'EST'");
+                    MessageEmbed log = Main.generateModlog(event.getUser(), timeoutMember.get(event.getUser()), action, reasonValue,caseID,"" + duration + " " +timeUnit,format.format(calendar.getTime()));
 
                     Main.insertCase(timeoutMember.get(event.getUser()), action, reasonValue, event.getUser(), caseID);
 
@@ -575,7 +659,8 @@ public class TwistedMC extends ListenerAdapter {
 
                     g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
 
-                    MessageEmbed vbPM = Main.generateTimeoutEmbed(reasonValue,caseID);
+
+                    MessageEmbed vbPM = Main.generateTimeoutEmbed(reasonValue,caseID,"" + duration + " " +timeUnit,format.format(calendar.getTime()));
                     sendMessage(timeoutMember.get(event.getUser()), vbPM, "1");
 
                     event.reply("Moderation Completed!").setEphemeral(true).queue();
@@ -677,6 +762,10 @@ public class TwistedMC extends ListenerAdapter {
                         MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason,caseID );
                         Main.insertCase(target,action,reason,event.getUser(),caseID );
                         sendMessage(target,vbPM, "3");
+                        // VIRTUAL BAN PROCESS BEGIN
+                        Main.deSyncUser(target,GuildID,SyncRoleID,getJDA());
+                        Main.compileAndRemoveRoles(target,GuildID,getJDA());
+                        // VIRTUAL BAN PROCESS END
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();
@@ -698,14 +787,29 @@ public class TwistedMC extends ListenerAdapter {
                             return;
                         }
                         try {
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
+                            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+                            if (timeUnit.equals(TimeUnit.DAYS)) {
+                                calendar.add(Calendar.DATE,duration);
+                            }
+                            if (timeUnit.equals(TimeUnit.HOURS)) {
+                                calendar.add(Calendar.HOUR,duration);
+                            }
+                            if (timeUnit.equals(TimeUnit.MINUTES)) {
+                                calendar.add(Calendar.MINUTE,duration);
+                            }
+                            if (timeUnit.equals(TimeUnit.SECONDS)) {
+                                calendar.add(Calendar.SECOND,duration);
+                            }
+                            SimpleDateFormat format = new SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a 'EST'");
+
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID,"" + duration + " " + timeUnit, format.format(calendar.getTime()));
                             Main.insertCase(target, action,data[2],event.getUser(), caseID);
 
                             User user = timeoutMember.get(event.getUser());
 
                             jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(event.getValue("mac:to:duration").getAsString()), TimeUnit.valueOf(unit)).queue();
 
-                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID);
+                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID,"" + duration + " " + timeUnit, format.format(calendar.getTime()));
                             sendMessage(target,vbPM, "1");
 
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
@@ -909,159 +1013,318 @@ public class TwistedMC extends ListenerAdapter {
                     return;
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-ca")) {
-                    if (modConfirmBypass.get(event.getUser().getId())) {
-                        String caseID = "#D-" + Main.generateRandomID(7);
-                        User target = modMapUser.get(event.getUser().getId());
-                        Guild g = getJDA().getGuildById(GuildID);
-                        g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(),caseID);
-                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID);
-                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        return;
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(ModeratorRole);
+                    permList.add(srModRole);
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
+                        if (modConfirmBypass.get(event.getUser().getId())) {
+                            String caseID = "#D-" + Main.generateRandomID(7);
+                            User target = modMapUser.get(event.getUser().getId());
+                            Guild g = getJDA().getGuildById(GuildID);
+                            g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), caseID);
+                            Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID);
+                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            permList.clear();
+                            permList = null;
+                            return;
+                        } else {
+                            User target = modMapUser.get(event.getUser().getId());
+                            EmbedBuilder confirm_msg = new EmbedBuilder();
+                            confirm_msg.setTitle("Confirm Moderation Action?");
+                            confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`** \n"
+                                    + "**Action:** **`" + ModerationCommandAction.SCAMBAN.getActionLabel() + "`** \n"
+                                    + "**Reason:** **`" + ModerationCommandAction.SCAMBAN.getDefaultReason() + "`**"
+                            );
+                            confirm_msg.setFooter(footer);
+                            confirm_msg.setTimestamp(new Date().toInstant());
+                            confirm_msg.setColor(new Color(253, 216, 1));
+                            SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
+                                    .addOption("Yes", "confirm-yes")
+                                    .addOption("No", "confirm-no")
+                                    .setPlaceholder("Confirm this action?")
+                                    .setRequiredRange(1, 1)
+                                    .build();
+                            data[1] = ModerationCommandAction.SCAMBAN.getActionLabel();
+                            data[2] = ModerationCommandAction.SCAMBAN.getDefaultReason();
+                            modMap.put(event.getUser().getId(), data);
+                            event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
+                            confirm_msg.clear();
+                            confirm_msg = null;
+                            event.editSelectMenu(fakemenu).queue();
+                            permList.clear();
+                            permList = null;
+                            return;
+                        }
                     } else {
-                        User target = modMapUser.get(event.getUser().getId());
-                        EmbedBuilder confirm_msg = new EmbedBuilder();
-                        confirm_msg.setTitle("Confirm Moderation Action?");
-                        confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`** \n"
-                                + "**Action:** **`" + ModerationCommandAction.SCAMBAN.getActionLabel() + "`** \n"
-                                + "**Reason:** **`" + ModerationCommandAction.SCAMBAN.getDefaultReason() + "`**"
-                        );
-                        confirm_msg.setFooter(footer);
-                        confirm_msg.setTimestamp(new Date().toInstant());
-                        confirm_msg.setColor(new Color(253, 216, 1));
-                        SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
-                                .addOption("Yes", "confirm-yes")
-                                .addOption("No", "confirm-no")
-                                .setPlaceholder("Confirm this action?")
-                                .setRequiredRange(1, 1)
-                                .build();
-                        data[1] = ModerationCommandAction.SCAMBAN.getActionLabel();
-                        data[2] = ModerationCommandAction.SCAMBAN.getDefaultReason();
-                        modMap.put(event.getUser().getId(), data);
-                        event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
-                        confirm_msg.clear();
-                        confirm_msg = null;
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
                         event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
                         return;
                     }
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-uau")) {
-                    if (modConfirmBypass.get(event.getUser().getId())) {
-                        User target = modMapUser.get(event.getUser().getId());
-                        String caseID = "#D-" + Main.generateRandomID(7);
-                        Guild g = getJDA().getGuildById(GuildID);
-                        g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
-                        MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(),caseID);
-                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, data[2], event.getUser(), caseID);
-                        g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        return;
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(ModeratorRole);
+                    permList.add(srModRole);
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
+                        if (modConfirmBypass.get(event.getUser().getId())) {
+                            User target = modMapUser.get(event.getUser().getId());
+                            String caseID = "#D-" + Main.generateRandomID(7);
+                            Guild g = getJDA().getGuildById(GuildID);
+                            g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), caseID);
+                            Main.insertCase(target, ModerationCommandAction.UNDERAGE, data[2], event.getUser(), caseID);
+                            g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            permList.clear();
+                            permList = null;
+                            return;
+                        } else {
+                            User target = modMapUser.get(event.getUser().getId());
+                            EmbedBuilder confirm_msg = new EmbedBuilder();
+                            confirm_msg.setTitle("Confirm Moderation Action?");
+                            confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
+                                    + "**Action:** **`" + ModerationCommandAction.UNDERAGE.getActionLabel() + "`** \n"
+                                    + "**Reason:** **`" + ModerationCommandAction.UNDERAGE.getDefaultReason() + "`**"
+                            );
+                            confirm_msg.setFooter(footer);
+                            confirm_msg.setTimestamp(new Date().toInstant());
+                            confirm_msg.setColor(new Color(253, 216, 1));
+                            SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
+                                    .addOption("Yes", "confirm-yes")
+                                    .addOption("No", "confirm-no")
+                                    .setPlaceholder("Confirm this action?")
+                                    .setRequiredRange(1, 1)
+                                    .build();
+                            data[1] = ModerationCommandAction.UNDERAGE.getActionLabel();
+                            data[2] = ModerationCommandAction.UNDERAGE.getDefaultReason();
+                            modMap.put(event.getUser().getId(), data);
+                            event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
+                            confirm_msg.clear();
+                            confirm_msg = null;
+                            event.editSelectMenu(fakemenu).queue();
+                            permList.clear();
+                            permList = null;
+                            return;
+                        }
                     } else {
-                        User target = modMapUser.get(event.getUser().getId());
-                        EmbedBuilder confirm_msg = new EmbedBuilder();
-                        confirm_msg.setTitle("Confirm Moderation Action?");
-                        confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
-                                + "**Action:** **`" + ModerationCommandAction.UNDERAGE.getActionLabel() + "`** \n"
-                                + "**Reason:** **`" + ModerationCommandAction.UNDERAGE.getDefaultReason() + "`**"
-                        );
-                        confirm_msg.setFooter(footer);
-                        confirm_msg.setTimestamp(new Date().toInstant());
-                        confirm_msg.setColor(new Color(253, 216, 1));
-                        SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
-                                .addOption("Yes", "confirm-yes")
-                                .addOption("No", "confirm-no")
-                                .setPlaceholder("Confirm this action?")
-                                .setRequiredRange(1, 1)
-                                .build();
-                        data[1] = ModerationCommandAction.UNDERAGE.getActionLabel();
-                        data[2] = ModerationCommandAction.UNDERAGE.getDefaultReason();
-                        modMap.put(event.getUser().getId(), data);
-                        event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
-                        confirm_msg.clear();
-                        confirm_msg = null;
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
                         event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
                         return;
                     }
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-w")) {
-                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                            .setRequired(true)
-                            .setPlaceholder("Insert reason for moderating this user")
-                            .setRequiredRange(1, 2000)
-                            .build();
-                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                    event.replyModal(modal).queue();
-                    event.editSelectMenu(fakemenu).queue();
-                    data[1] = ModerationCommandAction.WARN.getActionLabel();
-                    return;
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(HelperRole);
+                    permList.add(ModeratorRole);
+                    permList.add(srModRole);
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
+                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                                .setRequired(true)
+                                .setPlaceholder("Insert reason for moderating this user")
+                                .setRequiredRange(1, 2000)
+                                .build();
+                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                        event.replyModal(modal).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        data[1] = ModerationCommandAction.WARN.getActionLabel();
+                        permList.clear();
+                        permList = null;
+                        return;
+                    } else {
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
+                        return;
+                    }
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-k")) {
-                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                            .setRequired(true)
-                            .setPlaceholder("Insert reason for moderating this user")
-                            .setRequiredRange(1, 2000)
-                            .build();
-                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                    event.replyModal(modal).queue();
-                    event.editSelectMenu(fakemenu).queue();
-                    data[1] = ModerationCommandAction.KICK.getActionLabel();
-                    return;
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(ModeratorRole);
+                    permList.add(srModRole);
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
+                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                                .setRequired(true)
+                                .setPlaceholder("Insert reason for moderating this user")
+                                .setRequiredRange(1, 2000)
+                                .build();
+                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                        event.replyModal(modal).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        data[1] = ModerationCommandAction.KICK.getActionLabel();
+                        permList.clear();
+                        permList = null;
+                        return;
+                    } else {
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
+                        return;
+                    }
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-b")) {
-                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                            .setRequired(true)
-                            .setPlaceholder("Insert reason for moderating this user")
-                            .setRequiredRange(1, 2000)
-                            .build();
-                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                    event.replyModal(modal).queue();
-                    event.editSelectMenu(fakemenu).queue();
-                    data[1] = ModerationCommandAction.BAN.getActionLabel();
-                    return;
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(srModRole);
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
+                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                                .setRequired(true)
+                                .setPlaceholder("Insert reason for moderating this user")
+                                .setRequiredRange(1, 2000)
+                                .build();
+                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                        event.replyModal(modal).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        data[1] = ModerationCommandAction.BAN.getActionLabel();
+                        permList.clear();
+                        permList = null;
+                        return;
+                    } else {
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
+                        return;
+                    }
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-t")) {
-                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                            .setRequired(true)
-                            .setPlaceholder("Insert reason for moderating this user")
-                            .setRequiredRange(1, 2000)
-                            .build();
-                    TextInput timeunitInput = TextInput.create("mac:to:duration", "Duration of Timeout", TextInputStyle.SHORT)
-                            .setRequired(true)
-                            .setPlaceholder("Insert timeout duration (Max 28 days)")
-                            .setRequiredRange(1, 10)
-                            .build();
-                    TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
-                            .setRequired(true)
-                            .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
-                            .setRequiredRange(1, 50)
-                            .build();
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(HelperRole);
+                    permList.add(ModeratorRole);
+                    permList.add(srModRole);
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
 
-                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(
-                            ActionRow.of(reasonInput),
-                            ActionRow.of(timeunitInput),
-                            ActionRow.of(timeunitUnitInput)
-                    ).build();
-                    event.replyModal(modal).queue();
-                    event.editSelectMenu(fakemenu).queue();
-                    data[1] = ModerationCommandAction.TIMEOUT.getActionLabel();
-                    return;
+                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                                .setRequired(true)
+                                .setPlaceholder("Insert reason for moderating this user")
+                                .setRequiredRange(1, 2000)
+                                .build();
+                        TextInput timeunitInput = TextInput.create("mac:to:duration", "Duration of Timeout", TextInputStyle.SHORT)
+                                .setRequired(true)
+                                .setPlaceholder("Insert timeout duration (Max 28 days)")
+                                .setRequiredRange(1, 10)
+                                .build();
+                        TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
+                                .setRequired(true)
+                                .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
+                                .setRequiredRange(1, 50)
+                                .build();
+
+                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(
+                                ActionRow.of(reasonInput),
+                                ActionRow.of(timeunitInput),
+                                ActionRow.of(timeunitUnitInput)
+                        ).build();
+                        event.replyModal(modal).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        data[1] = ModerationCommandAction.TIMEOUT.getActionLabel();
+                        permList.clear();
+                        permList = null;
+                        return;
+                    } else {
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
+                        return;
+                    }
                 }
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-vb")) {
-                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                            .setRequired(true)
-                            .setPlaceholder("Insert reason for moderating this user")
-                            .setRequiredRange(1, 2000)
-                            .build();
-                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                    event.replyModal(modal).queue();
-                    event.editSelectMenu(fakemenu).queue();
-                    data[1] = ModerationCommandAction.VIRTUALBAN.getActionLabel();
-                    return;
+                    ArrayList<String> permList = new ArrayList<>();
+                    permList.add(AdminRole);
+                    permList.add(OwnerRole);
+                    if (Main.userHasPermission(event.getUser(), GuildID, getJDA(), permList)) {
+                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                                .setRequired(true)
+                                .setPlaceholder("Insert reason for moderating this user")
+                                .setRequiredRange(1, 2000)
+                                .build();
+                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                        event.replyModal(modal).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        data[1] = ModerationCommandAction.VIRTUALBAN.getActionLabel();
+                        permList.clear();
+                        permList = null;
+                        return;
+                    } else {
+                        EmbedBuilder emb = new EmbedBuilder();
+                        emb.setDescription("You do not have permission to use this action!\n\n**Contact a higher up if this punishment is needed**");
+                        emb.setColor(new Color(255,89,89));
+                        emb.setFooter(footer);
+                        emb.setTimestamp(new Date().toInstant());
+                        event.editMessageEmbeds(emb.build()).queue();
+                        event.editSelectMenu(fakemenu).queue();
+                        emb.clear();
+                        emb = null;
+                        permList.clear();
+                        permList = null;
+                        return;
+                    }
                 }
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
                 event.reply("Something went wrong!").setEphemeral(true).queue();
+                return;
             }
         }
 
@@ -1161,7 +1424,21 @@ public class TwistedMC extends ListenerAdapter {
                             return;
                         }
                         try {
-                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID);
+                            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+                            if (timeUnit.equals(TimeUnit.DAYS)) {
+                                calendar.add(Calendar.DATE,duration);
+                            }
+                            if (timeUnit.equals(TimeUnit.HOURS)) {
+                                calendar.add(Calendar.HOUR,duration);
+                            }
+                            if (timeUnit.equals(TimeUnit.MINUTES)) {
+                                calendar.add(Calendar.MINUTE,duration);
+                            }
+                            if (timeUnit.equals(TimeUnit.SECONDS)) {
+                                calendar.add(Calendar.SECOND,duration);
+                            }
+                            SimpleDateFormat format = new SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a 'EST'");
+                            MessageEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID,"" + duration + " " + timeUnit,format.format(calendar.getTime()));
                             Main.insertCase(target, action,data[2],event.getUser(), caseID);
 
                             User user = timeoutMember.get(event.getUser());
@@ -1169,8 +1446,9 @@ public class TwistedMC extends ListenerAdapter {
                             jda.getGuildById("549595806009786388").getMemberById(user.getId()).timeoutFor(Long.parseLong(String.valueOf(duration)), TimeUnit.valueOf(unit)).queue();
 
                             g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
+                            String durationOf = duration + " " + timeUnit;
 
-                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID);
+                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID,"" + duration + " " + timeUnit,format.format(calendar.getTime()));
                             sendMessage(target,vbPM, "1");
 
                             event.reply("Moderation Completed!").setEphemeral(true).queue();
@@ -1186,6 +1464,10 @@ public class TwistedMC extends ListenerAdapter {
                         MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason,caseID );
                         Main.insertCase(target,action,reason,event.getUser(),caseID );
                         sendMessage(target,vbPM, "3");
+                        // VIRTUAL BAN PROCESS BEGIN
+                        Main.deSyncUser(target,GuildID,SyncRoleID,getJDA());
+                        Main.compileAndRemoveRoles(target,GuildID,getJDA());
+                        // VIRTUAL BAN PROCESS END
                         g.getTextChannelById(ModlogChannelID).sendMessageEmbeds(log).queue();
                         g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
                         event.reply("Moderation Complete!").setEphemeral(true).queue();

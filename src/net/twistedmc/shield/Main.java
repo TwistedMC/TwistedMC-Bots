@@ -1,8 +1,12 @@
 package net.twistedmc.shield;
 
+import com.google.gson.Gson;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.Util.ModerationCommandAction;
 import net.twistedmc.shield.bedwars.BedWars;
@@ -12,12 +16,14 @@ import net.twistedmc.shield.twistedmc.TwistedMC;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
 import net.twistedmc.shield.twistedmc.servercommands.VirtBanCommand;
 
+import javax.annotation.Nonnull;
 import java.awt.*;
 import java.sql.*;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 public final class Main extends Plugin {
@@ -96,6 +102,114 @@ public final class Main extends Plugin {
 
     public static Connection getConnection() {
         return connection;
+    }
+
+    public static boolean rolesStored(User user) throws SQLException, ClassNotFoundException {
+        MySQL MySQL_rs = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement1_rs = MySQL_rs.openConnection().createStatement();
+        ResultSet resultSet = statement1_rs.executeQuery("SELECT * FROM `role_storage` WHERE `discordid`='" + user.getId() + "'");
+        try {
+            while(resultSet.next()) {
+                return resultSet.getString("id") != null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            resultSet.close();
+            statement1_rs.close();
+            MySQL_rs.getConnection().close();
+        }
+        return false;
+    }
+
+    public static boolean caseExists(String caseID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL_rs = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement1_rs = MySQL_rs.openConnection().createStatement();
+        ResultSet resultSet = statement1_rs.executeQuery("SELECT * FROM `discord_punishments` WHERE `caseID`='" + caseID + "'");
+        try {
+            while(resultSet.next()) {
+                return resultSet.getString("id") != null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            resultSet.close();
+            statement1_rs.close();
+            MySQL_rs.getConnection().close();
+        }
+        return false;
+    }
+
+    public static void deSyncUser(@Nonnull User user, @Nonnull String guildid,@Nonnull String syncRole, @Nonnull JDA jda) {
+        List<Role> roles = jda.getGuildById(guildid).getMember(UserSnowflake.fromId(user.getId())).getRoles();
+        if (roles.contains(jda.getGuildById(guildid).getRoleById(syncRole)))  {
+            jda.getGuildById(guildid).removeRoleFromMember(UserSnowflake.fromId(user.getId()),jda.getGuildById(guildid).getRoleById(syncRole)).reason("Virtual Ban").queue();
+            try {
+                clearDiscordSync(user.getId());
+            } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static boolean userHasPermission(User user,String GuildID,JDA jda, String Role) {
+        if (jda.getGuildById(GuildID).getMember(UserSnowflake.fromId(user.getId())).getRoles().contains(jda.getGuildById(GuildID).getRoleById(Role))) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean userHasPermission(User user,String GuildID,JDA jda, ArrayList<String> Roles) {
+        AtomicBoolean found = new AtomicBoolean(false);
+        Roles.stream().forEachOrdered(role -> {
+            if (jda.getGuildById(GuildID).getMember(UserSnowflake.fromId(user.getId())).getRoles().contains(jda.getGuildById(GuildID).getRoleById(role))) {
+                if (!found.get()) {
+                    found.set(true);
+                }
+                return;
+            }
+        });
+        if (found.get()) { return true; }
+        return false;
+    }
+    public static void compileAndRemoveRoles(@Nonnull User user, @Nonnull String guildID, @Nonnull JDA jda) throws SQLException,ClassNotFoundException {
+        List<Role> roles = jda.getGuildById(guildID).getMember(UserSnowflake.fromId(user.getId())).getRoles();
+        List<String> roleIDs = new ArrayList<>();
+        roles.stream().forEachOrdered(role -> {roleIDs.add(role.getId());});
+        Gson GSON = new Gson();
+        String json = GSON.toJson(roleIDs,ArrayList.class);
+        MySQL MySQL_rs = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement1_rs = MySQL_rs.openConnection().createStatement();
+        String did = user.getId();
+        try {
+            statement1_rs.executeUpdate("INSERT INTO `role_storage`(`id`,`discordid`,`roles`) VALUES (0,'" + did + "','" + json + "')");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            statement1_rs.close();
+            MySQL_rs.getConnection().close();
+        }
+        roleIDs.stream().forEachOrdered(role -> {jda.getGuildById(guildID).removeRoleFromMember(UserSnowflake.fromId(user.getId()),jda.getGuildById(guildID).getRoleById(role)).queue();});
+    }
+
+    public static void reAddRoles(@Nonnull User user, @Nonnull String guildID, @Nonnull JDA jda) throws SQLException, ClassNotFoundException{
+        MySQL MySQL_rs = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement1_rs = MySQL_rs.openConnection().createStatement();
+        ResultSet resultSet = statement1_rs.executeQuery("SELECT * FROM `role_storage` WHERE `discordid`='" + user.getId() + "'");
+        Gson GSON = new Gson();
+        List<String> roles = null;
+        try {
+            while (resultSet.next()) {
+                roles = Arrays.asList(GSON.fromJson(resultSet.getString("roles"),String.class));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            resultSet.close();
+            statement1_rs.close();
+            MySQL_rs.getConnection().close();
+        }
+        roles.stream().forEachOrdered(role -> {jda.getGuildById(guildID).addRoleToMember(UserSnowflake.fromId(user.getId()),jda.getGuildById(guildID).getRoleById(role)).queue();});
     }
 
     public static int getSHIELDReportCount() throws SQLException, ClassNotFoundException {
@@ -475,20 +589,81 @@ public final class Main extends Plugin {
         return null;
     }
 
+    /***
+     * Primary Modlog method
+     * @param author
+     * @param moderated
+     * @param action
+     * @param reason
+     * @param caseID
+     * @return <code>MessageEmbed</code>
+     * @throws SQLException
+     * @throws ClassNotFoundException
+     */
     public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason,String caseID) throws SQLException, ClassNotFoundException{
         if (reason.equals("")) { reason = action.getDefaultReason(); }
         EmbedBuilder log = new EmbedBuilder();
         String Cases = "";
         int cases = Main.getCases(); if (cases == -1) { Cases += "?`";} else { Cases += (cases + 1) + "`"; }
         log.setTitle("Moderation Log | `Case #" + Cases);
+        log.setThumbnail("https://twistedmcstudios.com/images/TwistedMCSecurity.png");
         log.setColor(new Color(253, 216, 1));
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("**Moderator**","**`" + author.getAsTag() + "`** (**`" + author.getId() + "`**)",true);
         log.addField("**Moderated User**","**`" + moderated.getAsTag() + "`** (**`" + moderated.getId() + "`**)",true);
-        log.addField("**Case ID**","**`" + caseID + "`**",true);
         log.addBlankField(true);
         log.addField("**Action**","**`" + action.getActionLabel() + "`**",false);
+        log.addField("**Case ID**","**`" + caseID + "`**",true);
         log.addField("**Reason**","**`" + reason + "`**",false);
+        return log.build();
+    }
+
+    /***
+     * Timeout Embed Variant of Modlog
+     * @param author
+     * @param moderated
+     * @param action
+     * @param reason
+     * @param caseID
+     * @param timeoutDuration
+     * @param timeoutSDF
+     * @return <code>MessageEmbed</code>
+     * @throws SQLException
+     * @throws ClassNotFoundException
+     */
+    public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason,String caseID,String timeoutDuration,String timeoutSDF) throws SQLException, ClassNotFoundException{
+        if (reason.equals("")) { reason = action.getDefaultReason(); }
+        EmbedBuilder log = new EmbedBuilder();
+        String Cases = "";
+        int cases = Main.getCases(); if (cases == -1) { Cases += "?`";} else { Cases += (cases + 1) + "`"; }
+        log.setTitle("Moderation Log | `Case #" + Cases);
+        log.setThumbnail("https://twistedmcstudios.com/images/TwistedMCSecurity.png");
+        log.setColor(new Color(253, 216, 1));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Moderator**","**`" + author.getAsTag() + "`** (**`" + author.getId() + "`**)",true);
+        log.addField("**Moderated User**","**`" + moderated.getAsTag() + "`** (**`" + moderated.getId() + "`**)",true);
+        log.addBlankField(true);
+        log.addField("**Case ID**","**`" + caseID + "`**",true);
+        log.addField("**Action**","**`" + action.getActionLabel() + "`**",true);
+        log.addField("**Timeout Duration**","**`" + timeoutDuration + "`**",true);
+        log.addField("**Timeout Expiry**","**`" + timeoutSDF + "`**",false);
+        log.addField("**Reason**","**`" + reason + "`**",false);
+        return log.build();
+    }
+
+    public static MessageEmbed generateAppealLog(String mod,String target,String punishment,String caseID, String reason, String appealReason) {
+        if (appealReason.equals("")) { appealReason = "Appealed by an Administrator."; }
+        EmbedBuilder log = new EmbedBuilder();
+        log.setTitle("Appeal Log | (" + caseID + ")");
+        log.setThumbnail("https://twistedmcstudios.com/images/TwistedMCSecurity.png");
+        log.setColor(new Color(0, 255, 93));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("**Moderator**","**`" + mod +"`**",true);
+        log.addField("**Moderated User**","**`" + target + "`**",true);
+        log.addBlankField(true);
+        log.addField("**Action**","**`" + punishment + "`**",false);
+        log.addField("**Punishment Reason**","**`" + caseID + "`**",true);
+        log.addField("**Appeal Reason**","**`" + reason + "`**",false);
         return log.build();
     }
 
@@ -558,14 +733,16 @@ public final class Main extends Plugin {
         return log.build();
     }
 
-    public static MessageEmbed generateTimeoutEmbed(String reason,String caseID) {
+    public static MessageEmbed generateTimeoutEmbed(String reason,String caseID,String duration,String SDF) {
         if (reason.equals("")) { reason = "Timed out by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been timed out!");
-        log.setDescription("You have been timed in the TwistedMC Discord server!");
+        log.setDescription("You have been timed out the TwistedMC Discord server!");
         log.setColor(new Color(175, 66, 0));
         log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Case ID**",caseID,false);
+        log.addField("**Case ID**",caseID,true);
+        log.addField("**Duration**",duration,true);
+        log.addField("**Timeout Expiry**",SDF,false);
         log.addField("**Reason**",reason,false);
         log.setFooter(footer);
         return log.build();
