@@ -277,7 +277,9 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
 
-            TextInput version = TextInput.create("version","Minecraft Version", TextInputStyle.SHORT)
+            event.reply("<:danger:869367070591189014> **SORRY!** This command is no longer available!").queue();
+
+            /*TextInput version = TextInput.create("version","Minecraft Version", TextInputStyle.SHORT)
                     .setPlaceholder("Enter your Minecraft version here")
                     .setRequiredRange(2,50)
                     .build();
@@ -290,7 +292,7 @@ public class TwistedMC extends ListenerAdapter {
                     .addActionRows(ActionRow.of(version),ActionRow.of(bug))
                     .build();
 
-            event.replyModal(m).queue();
+            event.replyModal(m).queue();*/
             return;
         }
 
@@ -303,6 +305,10 @@ public class TwistedMC extends ListenerAdapter {
                 event.reply("You cannot use **suggestion** in this guild!").setEphemeral(true).queue();
                 return;
             }
+
+            event.reply("<:danger:869367070591189014> **SORRY!** This command is no longer available!").queue();
+
+            /*
 
             TextInput server = TextInput.create("server","Server you're giving feedback on", TextInputStyle.SHORT)
                     .setPlaceholder("What server are you giving feedback for?")
@@ -326,7 +332,7 @@ public class TwistedMC extends ListenerAdapter {
                     .addActionRows(ActionRow.of(server),ActionRow.of(feedback),ActionRow.of(examples),ActionRow.of(additional))
                     .build();
 
-            event.replyModal(m).queue();
+            event.replyModal(m).queue();*/
             return;
         }
 
@@ -398,11 +404,13 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
 
+            event.reply("<:danger:869367070591189014> **SORRY!** This command is no longer available!").queue();
+
             String id = event.getOption("id").getAsString();
 
-            try {
+            /*try {
                 if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
-                    event.reply("You cannot use **/shieldreport** in this guild!").setEphemeral(true).queue();
+                    event.reply("You cannot use  in this guild!").setEphemeral(true).queue();
                     return;
                 } else if (!Main.idExists(id)) {
                     event.reply("SHIELD Report with id **" + id + "** does not exist!").setEphemeral(true).queue();
@@ -477,7 +485,7 @@ public class TwistedMC extends ListenerAdapter {
                 }
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
-            }
+            }*/
             return;
         }
 
@@ -487,8 +495,12 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
 
+            event.reply("<:danger:869367070591189014> **SORRY!** This command is no longer available!").queue();
+
+            /*
+
             if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
-                event.reply("You cannot use **/staffstatistics** in this guild!").setEphemeral(true).queue();
+                event.reply("You cannot use  in this guild!").setEphemeral(true).queue();
                 return;
             } else {
                 SelectMenu menu = SelectMenu.create("menu:stats")
@@ -506,7 +518,7 @@ public class TwistedMC extends ListenerAdapter {
                 emb.setTimestamp(new Date().toInstant());
                 emb.setFooter("TwistedMC");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
-            }
+            }*/
             return;
         }
 

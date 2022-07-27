@@ -39,11 +39,11 @@ public final class Main extends Plugin {
     public static String sqlUser = "accounts";
     public static String sqlPw = "1b5m6-aKy*3d]3Z7l1ly8!5eld-hx5ZR(HFYreATsUj5J";
 
-    public static String sqlHostDM = "173.44.44.251";
+    public static String sqlHostDM = "63.135.164.26";
     public static String sqlPortDM = "3306";
-    public static String sqlDbDM = "discordModeration";
-    public static String sqlUserDM = "discordModeration";
-    public static String sqlPwDM = "00za3/S9I4V0.Xd[gHKwT3@w3G4r_iAj6Bc.7P";
+    public static String sqlDbDM = "mc197200";
+    public static String sqlUserDM = "mc197200";
+    public static String sqlPwDM = "d36562800c";
 
     public static Connection connection = null;
     public static Statement statement;
@@ -67,14 +67,14 @@ public final class Main extends Plugin {
         getProxy().getPluginManager().registerCommand(this, new UsernameVerificationCommand());
         getProxy().getPluginManager().registerCommand(this, new VirtBanCommand());
 
-        BedWars = new BedWars("OTc1MzM5ODczOTQ5MDg1NzE2.GVt7cU.MD6gWVD-lQysPAdnW-MvX2tQgdwXrO0tDe4Upw");
-        BedWars.start();
+        /*BedWars = new BedWars("OTc1MzM5ODczOTQ5MDg1NzE2.GVt7cU.MD6gWVD-lQysPAdnW-MvX2tQgdwXrO0tDe4Upw");
+        BedWars.start();*/
 
         TwistedMC = new TwistedMC("ODU5NjgyOTU4OTk3OTc5MTQ2.YNwQJQ.S3E4_VZh2VkHKUn20MKYmDvG57E");
         TwistedMC.start();
 
-        Stats = new Stats("OTYwODQ2MDA1Mjk5OTgyMzM2.YkwXkw.w9znnJrwHwuA-tiyF5ov57jRiEU");
-        Stats.start();
+        /*Stats = new Stats("OTYwODQ2MDA1Mjk5OTgyMzM2.YkwXkw.w9znnJrwHwuA-tiyF5ov57jRiEU");
+        Stats.start();*/
 
         getProxy().getPluginManager().registerCommand(this, new MessageCommand());
     }
@@ -83,7 +83,7 @@ public final class Main extends Plugin {
     public void onDisable() {
         //SHIELD.stop();
         TwistedMC.stop();
-        Stats.stop();
+        //Stats.stop();
     }
 
     public void openConnection() throws SQLException, ClassNotFoundException {
@@ -96,7 +96,7 @@ public final class Main extends Plugin {
                 return;
             }
             Class.forName("com.mysql.jdbc.Driver");
-            connection = DriverManager.getConnection("jdbc:mysql://" + sqlHost + ":" + sqlPort + "/" + sqlDb, sqlUser, sqlPw);
+            connection = DriverManager.getConnection("jdbc:mysql://" + sqlHostDM + ":" + sqlPortDM + "/" + sqlDbDM, sqlUserDM, sqlPwDM);
         }
     }
 
@@ -144,11 +144,11 @@ public final class Main extends Plugin {
         List<Role> roles = jda.getGuildById(guildid).getMember(UserSnowflake.fromId(user.getId())).getRoles();
         if (roles.contains(jda.getGuildById(guildid).getRoleById(syncRole)))  {
             jda.getGuildById(guildid).removeRoleFromMember(UserSnowflake.fromId(user.getId()),jda.getGuildById(guildid).getRoleById(syncRole)).reason("Virtual Ban").queue();
-            try {
+            /*try {
                 clearDiscordSync(user.getId());
             } catch (SQLException | ClassNotFoundException e) {
                 e.printStackTrace();
-            }
+            }*/
         }
     }
 
@@ -822,7 +822,7 @@ public final class Main extends Plugin {
     }
 
 
-    public static void clearDiscordSync(String identifier) throws SQLException,
+    /*public static void clearDiscordSync(String identifier) throws SQLException,
             ClassNotFoundException {
         MySQL MySQL = new MySQL("173.44.44.251", "3306", "network_sync", "network_sync",
                 "FJWUqCH5Auz9j2Wo");
@@ -837,6 +837,6 @@ public final class Main extends Plugin {
             }
             MySQL.closeConnection();
         }
-    }
+    }*/
 
 }
