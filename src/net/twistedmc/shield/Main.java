@@ -1,18 +1,20 @@
 package net.twistedmc.shield;
 
+import club.minnced.discord.webhook.send.WebhookEmbed;
+import club.minnced.discord.webhook.send.WebhookEmbedBuilder;
+import club.minnced.discord.webhook.send.WebhookMessageBuilder;
 import com.google.gson.Gson;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.UserSnowflake;
+import net.dv8tion.jda.api.entities.*;
+import net.md_5.bungee.BungeeCord;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.Util.ModerationCommandAction;
 import net.twistedmc.shield.bedwars.BedWars;
 import net.twistedmc.shield.stats.Stats;
 import net.twistedmc.shield.twistedmc.servercommands.MessageCommand;
 import net.twistedmc.shield.twistedmc.TwistedMC;
+import net.twistedmc.shield.twistedmc.servercommands.StopBotCommand;
 import net.twistedmc.shield.twistedmc.servercommands.UsernameVerificationCommand;
 import net.twistedmc.shield.twistedmc.servercommands.VirtBanCommand;
 
@@ -50,7 +52,6 @@ public final class Main extends Plugin {
 
     static Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
     static int year = calendar.get(Calendar.YEAR);
-    static String footer = "© " + year + " TwistedMC Studios";
 
     @Override
     public void onEnable() {
@@ -66,6 +67,7 @@ public final class Main extends Plugin {
 
         getProxy().getPluginManager().registerCommand(this, new UsernameVerificationCommand());
         getProxy().getPluginManager().registerCommand(this, new VirtBanCommand());
+        getProxy().getPluginManager().registerCommand(this, new StopBotCommand());
 
         /*BedWars = new BedWars("OTc1MzM5ODczOTQ5MDg1NzE2.GVt7cU.MD6gWVD-lQysPAdnW-MvX2tQgdwXrO0tDe4Upw");
         BedWars.start();*/
@@ -122,10 +124,10 @@ public final class Main extends Plugin {
         return false;
     }
 
-    public static boolean caseExists(String caseID) throws SQLException, ClassNotFoundException {
+    public static boolean caseExists(String caseID, String guildID) throws SQLException, ClassNotFoundException {
         MySQL MySQL_rs = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement statement1_rs = MySQL_rs.openConnection().createStatement();
-        ResultSet resultSet = statement1_rs.executeQuery("SELECT * FROM `discord_punishments` WHERE `caseID`='" + caseID + "'");
+        ResultSet resultSet = statement1_rs.executeQuery("SELECT * FROM `discord_punishments` WHERE `caseID`='" + caseID + "' AND `guildID`='" + guildID + "'");
         try {
             while(resultSet.next()) {
                 return resultSet.getString("id") != null;
@@ -182,7 +184,7 @@ public final class Main extends Plugin {
         Statement statement1_rs = MySQL_rs.openConnection().createStatement();
         String did = user.getId();
         try {
-            statement1_rs.executeUpdate("INSERT INTO `role_storage`(`id`,`discordid`,`roles`) VALUES (0,'" + did + "','" + json + "')");
+            statement1_rs.executeUpdate("INSERT INTO `role_storage`(`id`,`guildID`,`discordid`,`roles`) VALUES (0,'" + guildID + "','" + did + "','" + json + "')");
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -534,7 +536,7 @@ public final class Main extends Plugin {
     }
 
     public static boolean isBanned(long guild) throws SQLException, ClassNotFoundException {
-        MySQL MySQL = new MySQL("173.44.44.251", "3306", "publicDiscordBots", "publicDiscordBots", "OuyvDusfYONFIxuR");
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement statement = MySQL.openConnection().createStatement();
         ResultSet result = statement.executeQuery("SELECT * FROM guildBan WHERE guildID = '" + guild + "'");
         try {
@@ -552,10 +554,29 @@ public final class Main extends Plugin {
         return false;
     }
 
-    public static boolean isMaintenance(String botName) throws SQLException, ClassNotFoundException {
-        MySQL MySQL = new MySQL("173.44.44.251", "3306", "publicDiscordBots", "publicDiscordBots", "OuyvDusfYONFIxuR");
+    public static boolean isBeta(long guild) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement statement = MySQL.openConnection().createStatement();
-        ResultSet result = statement.executeQuery("SELECT * FROM settings WHERE botName = '" + botName + "' AND maintenance = '1'");
+        ResultSet result = statement.executeQuery("SELECT * FROM guildBeta WHERE guildID = '" + guild + "'");
+        try {
+            while (result.next()) {
+                return result.getString("guildID") != null;
+            }
+            return false;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return false;
+    }
+
+    public static boolean isMaintenance(String botName) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM botSettings WHERE botName = '" + botName + "' AND maintenance = '1'");
         try {
             while (result.next()) {
                 return result.getString("botName") != null;
@@ -572,9 +593,9 @@ public final class Main extends Plugin {
     }
 
     public static String getStatusLink(String botName) throws SQLException, ClassNotFoundException {
-        MySQL MySQL = new MySQL("173.44.44.251", "3306", "publicDiscordBots", "publicDiscordBots", "OuyvDusfYONFIxuR");
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement statement = MySQL.openConnection().createStatement();
-        ResultSet result = statement.executeQuery("SELECT * FROM `settings` WHERE botName = '" + botName + "'");
+        ResultSet result = statement.executeQuery("SELECT * FROM `botSettings` WHERE botName = '" + botName + "'");
         try {
             while(result.next()){
                 return result.getString("statusLink");
@@ -600,22 +621,24 @@ public final class Main extends Plugin {
      * @throws SQLException
      * @throws ClassNotFoundException
      */
-    public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason,String caseID) throws SQLException, ClassNotFoundException{
+    public static WebhookEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason, String caseID, String guildID) throws SQLException, ClassNotFoundException{
         if (reason.equals("")) { reason = action.getDefaultReason(); }
-        EmbedBuilder log = new EmbedBuilder();
         String Cases = "";
-        int cases = Main.getCases(); if (cases == -1) { Cases += "?`";} else { Cases += (cases + 1) + "`"; }
-        log.setTitle("Moderation Log | `Case #" + Cases);
-        log.setThumbnail("https://twistedmcstudios.com/images/TwistedMCSecurity.png");
-        log.setColor(new Color(253, 216, 1));
-        log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Moderator**","**`" + author.getAsTag() + "`** (**`" + author.getId() + "`**)",true);
-        log.addField("**Moderated User**","**`" + moderated.getAsTag() + "`** (**`" + moderated.getId() + "`**)",true);
-        log.addBlankField(true);
-        log.addField("**Action**","**`" + action.getActionLabel() + "`**",false);
-        log.addField("**Case ID**","**`" + caseID + "`**",true);
-        log.addField("**Reason**","**`" + reason + "`**",false);
-        return log.build();
+        int cases = Main.getCases(guildID); if (cases == -1) { Cases += "?";} else { Cases += (cases + 1) + ""; }
+
+        WebhookEmbed embed = new WebhookEmbedBuilder()
+                .setTitle(new WebhookEmbed.EmbedTitle("Moderation Log", null))
+                .setColor(0xFFD966)
+                .setFooter(new WebhookEmbed.EmbedFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion(), null))
+                .setTimestamp(new java.util.Date().toInstant())
+                .addField(new WebhookEmbed.EmbedField(true, "Moderator", author.getAsMention() + "\nID: " + author.getId() + ""))
+                .addField(new WebhookEmbed.EmbedField(true, "Moderated User", moderated.getAsMention() + "\nID: " + moderated.getId() + ""))
+                .addField(new WebhookEmbed.EmbedField(false, "Action", action.getActionLabel()))
+                .addField(new WebhookEmbed.EmbedField(true, "Case ID", caseID))
+                .addField(new WebhookEmbed.EmbedField(false, "Reason", reason))
+                .build();
+
+        return embed;
     }
 
     /***
@@ -631,24 +654,27 @@ public final class Main extends Plugin {
      * @throws SQLException
      * @throws ClassNotFoundException
      */
-    public static MessageEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason,String caseID,String timeoutDuration,String timeoutSDF) throws SQLException, ClassNotFoundException{
+    public static WebhookEmbed generateModlog(User author, User moderated, ModerationCommandAction action, String reason,String caseID,String timeoutDuration,String timeoutSDF, String guildID) throws SQLException, ClassNotFoundException{
         if (reason.equals("")) { reason = action.getDefaultReason(); }
         EmbedBuilder log = new EmbedBuilder();
         String Cases = "";
-        int cases = Main.getCases(); if (cases == -1) { Cases += "?`";} else { Cases += (cases + 1) + "`"; }
-        log.setTitle("Moderation Log | `Case #" + Cases);
-        log.setThumbnail("https://twistedmcstudios.com/images/TwistedMCSecurity.png");
-        log.setColor(new Color(253, 216, 1));
-        log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Moderator**","**`" + author.getAsTag() + "`** (**`" + author.getId() + "`**)",true);
-        log.addField("**Moderated User**","**`" + moderated.getAsTag() + "`** (**`" + moderated.getId() + "`**)",true);
-        log.addBlankField(true);
-        log.addField("**Case ID**","**`" + caseID + "`**",true);
-        log.addField("**Action**","**`" + action.getActionLabel() + "`**",true);
-        log.addField("**Timeout Duration**","**`" + timeoutDuration + "`**",true);
-        log.addField("**Timeout Expiry**","**`" + timeoutSDF + "`**",false);
-        log.addField("**Reason**","**`" + reason + "`**",false);
-        return log.build();
+        int cases = Main.getCases(guildID); if (cases == -1) { Cases += "?";} else { Cases += (cases + 1) + ""; }
+
+        WebhookEmbed embed = new WebhookEmbedBuilder()
+                .setTitle(new WebhookEmbed.EmbedTitle("Moderation Log", null))
+                .setColor(0xFFD966)
+                .setFooter(new WebhookEmbed.EmbedFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion(), null))
+                .setTimestamp(new java.util.Date().toInstant())
+                .addField(new WebhookEmbed.EmbedField(true, "Moderator", author.getAsMention() + "\nID: " + author.getId()))
+                .addField(new WebhookEmbed.EmbedField(true, "Moderated User", moderated.getAsMention() + "\nID: " + moderated.getId()))
+                .addField(new WebhookEmbed.EmbedField(true, "Case ID", caseID))
+                .addField(new WebhookEmbed.EmbedField(true, "Action", action.getActionLabel()))
+                .addField(new WebhookEmbed.EmbedField(true, "Timeout Duration", timeoutDuration.toLowerCase()))
+                .addField(new WebhookEmbed.EmbedField(false, "Timeout Expiry", timeoutSDF))
+                .addField(new WebhookEmbed.EmbedField(false, "Reason", reason))
+                .build();
+
+        return embed;
     }
 
     public static MessageEmbed generateAppealLog(String mod,String target,String punishment,String caseID, String reason, String appealReason) {
@@ -667,13 +693,170 @@ public final class Main extends Plugin {
         return log.build();
     }
 
-    public static int getCases() throws SQLException, ClassNotFoundException {
+    public static boolean appealLinkSet(String guildID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM mabSettings WHERE guildID = '" + guildID + "'");
+        try {
+            while (result.next()) {
+                return result.getString("appealLink") != null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return false;
+    }
+
+    public static boolean logChannelSet(String guildID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM mabSettings WHERE guildID = '" + guildID + "'");
+        try {
+            while (result.next()) {
+                return result.getString("channelID") != null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return false;
+    }
+
+    public static void insertSettings(String guildID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("INSERT INTO `mabSettings`(`guildID`) " +
+                    "VALUES ('" + guildID + "')");
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void insertBan(String guildID, String reason) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("INSERT INTO `guildBan`(`guildID`, `reason`) " +
+                    "VALUES ('" + guildID + "','" + reason + "')");
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void activateBeta(String guildID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("INSERT INTO `guildBeta`(`guildID`) " +
+                    "VALUES ('" + guildID + "')");
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static String getLogChannel(String guildID) throws SQLException, ClassNotFoundException {
+        String channelid = "";
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM `mabSettings` WHERE guildID = '" + guildID + "'");
+        try {
+            while(result.next()){
+                channelid = result.getString("channelID");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return channelid;
+    }
+
+    public static void updateChannelID(String guildID, String channelID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("UPDATE `mabSettings` SET `channelID`='" + channelID + "' WHERE guildID = '" + guildID + "'");
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void updateAppealLink(String guildID, String appealLink) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("UPDATE `mabSettings` SET `appealLink`='" + appealLink + "' WHERE guildID = '" + guildID + "'");
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static String getAppealLink(String guildID) throws SQLException, ClassNotFoundException {
+        String appeallink = "";
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM `mabSettings` WHERE guildID = '" + guildID + "'");
+        try {
+            while(result.next()){
+                appeallink = result.getString("appealLink");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return appeallink;
+    }
+
+    public static int getCases(String guildID) throws SQLException, ClassNotFoundException {
         int Cases = 0;
         MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement st = MySQL.openConnection().createStatement();
         ResultSet set = null;
         try {
-            set = st.executeQuery("SELECT * FROM `discord_punishments`");
+            set = st.executeQuery("SELECT * FROM `discord_punishments` WHERE guildID = '" + guildID + "'");
             while(set.next()) {
                 Cases += 1;
             }
@@ -696,15 +879,15 @@ public final class Main extends Plugin {
         }
         return Cases;
     }
-    public static void insertCase(User target, ModerationCommandAction action, String reason, User moderator,String caseID) throws SQLException, ClassNotFoundException {
+    public static void insertCase(User target, ModerationCommandAction action, String reason, User moderator,String caseID, String guildID) throws SQLException, ClassNotFoundException {
         SimpleDateFormat format = new SimpleDateFormat("MMM dd, yyyy hh:mma");
         TimeZone etTimeZone = TimeZone.getTimeZone("America/New_York");
         format.setTimeZone(etTimeZone);
         MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
         Statement st = MySQL.openConnection().createStatement();
         try {
-            st.executeUpdate("INSERT INTO `discord_punishments`(`id`, `user`,`action`,`reason`,`moderator`,`timestamp`,`caseID`) " +
-                    "VALUES (0,'" + target.getAsTag() + "(" + target.getId() + ")','" + action.getActionLabel() + "','"
+            st.executeUpdate("INSERT INTO `discord_punishments`(`id`, `guildID`, `user`,`action`,`reason`,`moderator`,`timestamp`,`caseID`) " +
+                    "VALUES (0,'" + guildID + "','" + target.getAsTag() + "(" + target.getId() + ")','" + action.getActionLabel() + "','"
                     + reason + "','" + moderator.getAsTag() + "(" + moderator.getId() + ")','" + format.format(new java.util.Date()) + "','" + caseID +"')");
             //st.close();
             //st.getConnection().close();
@@ -720,57 +903,57 @@ public final class Main extends Plugin {
         }
     }
 
-    public static MessageEmbed generateBanEmbed(String reason,String caseID) {
+    public static MessageEmbed generateBanEmbed(String reason,String caseID, String discordName, Guild guild) {
         if (reason.equals("")) { reason = "Banned by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been banned!");
-        log.setDescription("You have been banned from the TwistedMC Discord server!");
+        log.setDescription("You have been banned from the " + discordName + " Discord server!");
         log.setColor(new Color(255, 0, 0));
         log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Case ID**",caseID,false);
-        log.addField("**Reason**",reason,false);
-        log.setFooter(footer);
+        log.addField("Case ID",caseID,false);
+        log.addField("Reason",reason,false);
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
         return log.build();
     }
 
-    public static MessageEmbed generateTimeoutEmbed(String reason,String caseID,String duration,String SDF) {
+    public static MessageEmbed generateTimeoutEmbed(String reason,String caseID,String duration,String SDF, String discordName, Guild guild) {
         if (reason.equals("")) { reason = "Timed out by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been timed out!");
-        log.setDescription("You have been timed out the TwistedMC Discord server!");
+        log.setDescription("You have been timed out from the " + discordName + " Discord server!");
         log.setColor(new Color(175, 66, 0));
         log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Case ID**",caseID,true);
-        log.addField("**Duration**",duration,true);
-        log.addField("**Timeout Expiry**",SDF,false);
-        log.addField("**Reason**",reason,false);
-        log.setFooter(footer);
+        log.addField("Case ID",caseID,true);
+        log.addField("Duration",duration.toLowerCase(),true);
+        log.addField("Timeout Expiry",SDF,false);
+        log.addField("Reason",reason,false);
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
         return log.build();
     }
 
-    public static MessageEmbed generateKickEmbed(String reason,String caseID) {
+    public static MessageEmbed generateKickEmbed(String reason,String caseID, String discordName, Guild guild) {
         if (reason.equals("")) { reason = "Kicked by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've been kicked!");
-        log.setDescription("You have been kicked from the TwistedMC Discord server!");
+        log.setDescription("You have been kicked from the " + discordName + " Discord server!");
         log.setColor(new Color(255, 97, 0));
         log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Reason**",reason,false);
-        log.setFooter(footer);
+        log.addField("Reason",reason,false);
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
         return log.build();
     }
 
 
-    public static MessageEmbed generatewarnEmbed(String reason,String caseID) {
+    public static MessageEmbed generatewarnEmbed(String reason,String caseID, String discordName, Guild guild) {
         if (reason.equals("")) { reason = "Warned by a Moderator+"; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("You've received a warning!");
-        log.setDescription("**This is just a warning to inform you the behavior below is not allowed in the TwistedMC Discord server.**\nIf you continue this behavior, you may be moderated further.");
+        log.setDescription("**This is just a warning to inform you the behavior below is not allowed in the " + discordName + " Discord server.**\nIf you continue this behavior, you may be moderated further.");
         log.setColor(new Color(253, 216, 1));
         log.setTimestamp(new java.util.Date().toInstant());
-        log.addField("**Case ID**",caseID,false);
-        log.addField("**Reason**",reason,false);
-        log.setFooter(footer);
+        log.addField("Case ID",caseID,false);
+        log.addField("Reason",reason,false);
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
         return log.build();
     }
 
@@ -785,7 +968,7 @@ public final class Main extends Plugin {
         vb.setDescription("Sorry about that, maybe you can make an appeal. Otherwise, you'll no longer be able to participate in the TwistedMC Discord server."
                 + "\n\n__**Case ID:**__\n*`" + reason + "`*"
                 + "\n\n__**Reason for Virtual Ban:**__\n*`" + reason + "`*");
-        vb.setFooter(footer);
+        vb.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion());
 
         return vb.build();
     }

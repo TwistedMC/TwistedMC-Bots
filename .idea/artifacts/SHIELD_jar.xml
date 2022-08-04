@@ -3,7 +3,8 @@
     <output-path>$PROJECT_DIR$/out/artifacts/SHIELD_jar</output-path>
     <root id="archive" name="SHIELD.jar">
       <element id="module-output" name="SHIELD" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/../../jars/JDA-5.0.0-alpha.11-withDependencies.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/Downloads/discord-webhooks-0.2.0/build/libs/discord-webhooks-0.2.0-all.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../../jars/JDA-5.0.0-alpha.17-withDependencies.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

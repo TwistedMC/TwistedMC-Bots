@@ -1,13 +1,13 @@
 package net.twistedmc.shield.Util;
 
 public enum ModerationCommandAction {
-    WARN("warning","WARNING","Warning issued by Moderator."),
-    KICK("kick","KICK","Kick Issued by Moderator"),
-    BAN("ban","BAN","Ban Issued by Moderator"),
-    UNDERAGE("underage","UNDERAGE-BAN","Underage User. (< 13)"),
-    SCAMBAN("scamban","CA-BAN","Compromised Account"),
-    VIRTUALBAN("virtban","VIRTUAL-BAN","Virtually Banned by Moderator"),
-    TIMEOUT("timeout","TIMEOUT","Timed out by Moderator");
+    WARN("warning","Warning","Warning issued by Moderator."),
+    KICK("kick","Kick","Kick Issued by Moderator"),
+    BAN("ban","Ban","Ban Issued by Moderator"),
+    UNDERAGE("underage","Underage Ban","Underage User. (< 13)"),
+    SCAMBAN("scamban","Compromised Account","Compromised Account"),
+    VIRTUALBAN("virtban","Virtual Ban","Virtually Banned by Moderator"),
+    TIMEOUT("timeout","Timeout","Timed out by Moderator");
 
 
 
