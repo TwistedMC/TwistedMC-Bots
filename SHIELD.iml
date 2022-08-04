@@ -28,16 +28,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../jars/Party and Friends Cracked By ziue.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/discord-webhooks-0.2.0/build/libs/discord-webhooks-0.2.0-all.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../jars/discord-webhooks-0.2.0-all.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

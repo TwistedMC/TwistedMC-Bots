@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
@@ -140,7 +141,9 @@ public class TwistedMC extends ListenerAdapter {
                             .addOption(OptionType.STRING, "guildid", "Guild ID", true)
                             .addOption(OptionType.STRING, "reason", "Reason for ban", true))
                     .addSubcommands(new SubcommandData("beta", "Activate beta features for specified guild")
-                            .addOption(OptionType.STRING, "guildid", "Guild ID", true)).queue();
+                            .addOption(OptionType.STRING, "guildid", "Guild ID", true))
+                    .addSubcommands(new SubcommandData("maintenance","Put the bot into maintenance"))
+            .queue();
 
             Objects.requireNonNull(Objects.requireNonNull(jda.getGuildById(GuildID))).upsertCommand("appeal","Appeal a virtual ban case")
                     .setGuildOnly(true)
