@@ -3,13 +3,24 @@ package net.twistedmc.shield.twistedmc;
 
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
+import club.minnced.discord.webhook.send.WebhookEmbedBuilder;
+import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
+import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
+import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.unions.GuildChannelUnion;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
@@ -22,28 +33,40 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
+import net.dv8tion.jda.api.managers.AudioManager;
 import net.dv8tion.jda.api.managers.channel.ChannelManager;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
+import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.md_5.bungee.BungeeCord;
+import net.md_5.bungee.api.ProxyServer;
 import net.twistedmc.shield.Main;
 import net.twistedmc.shield.MySQL;
 import net.twistedmc.shield.Util.ModerationCommandAction;
+import net.twistedmc.shield.twistedmc.music.GuildMusicManager;
+import net.twistedmc.shield.twistedmc.music.PlayerManager;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.NumberFormat;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class TwistedMC extends ListenerAdapter {
@@ -78,6 +101,8 @@ public class TwistedMC extends ListenerAdapter {
     int year = calendar.get(Calendar.YEAR);
     String footer = "© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion();
 
+    private final Map<Long, Message> messageMap = new HashMap<>();
+
     public TwistedMC(String token) {
         this.token = token;
     }
@@ -97,7 +122,7 @@ public class TwistedMC extends ListenerAdapter {
             jda.awaitReady();
             jda.addEventListener(this);
             //jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
-            jda.getPresence().setPresence(Activity.playing("We're online!"), false);
+            //jda.getPresence().setPresence(Activity.watching(NumberFormat.getInstance().format(jda.getGuilds().size()) + " servers!"), false);
             /*jda.getGuildById(GuildID).upsertCommand("shieldreport", "View a SHIELD report.")
                     .addOption(OptionType.STRING, "id", "id of shield report", true).queue();
             jda.updateCommands().queue();
@@ -112,29 +137,58 @@ public class TwistedMC extends ListenerAdapter {
 
 
             jda.updateCommands()
-                    .addCommands(Commands.slash("mab", "MAB main command")
+
+                    /*.addCommands(Commands.slash("help", "MAB help command")
+                            .setGuildOnly(true))*/
+
+                    .addCommands(Commands.slash("music", "Music main command")
+                            .setGuildOnly(true)
+                            .addSubcommands(new SubcommandData("play", "Play music")
+                                    .addOption(OptionType.STRING, "url", "Song URL", true))
+                            .addSubcommands(new SubcommandData("join", "Join current voice channel"))
+                            .addSubcommands(new SubcommandData("queue", "View music queue"))
+                            .addSubcommands(new SubcommandData("clearqueue", "Clear music queue"))
+                            .addSubcommands(new SubcommandData("stop", "Disconnect MAB from channel and clear music queue")))
+
+                    .addCommands(Commands.slash("mab", "MAB Main command")
                             .setGuildOnly(true)
                             .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
-                            .addSubcommands(new SubcommandData("settings", "MAB settings")
-                                    .addOption(OptionType.STRING, "channelid", "Channel ID of mod logs", true)
-                                    .addOption(OptionType.STRING, "appeallink", "Appeal url", true))
                             .addSubcommands(new SubcommandData("fixwebhook", "Use this if you are having webhook issues")))
+
+                    .addCommands(Commands.slash("mabsettings", "MAB Settings command")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
+                            .addSubcommands(new SubcommandData("punishmentlog", "Set punishment log channel")
+                                    .addOption(OptionType.CHANNEL, "channel", "Channel for punishment logs", true))
+                            .addSubcommands(new SubcommandData("messagelog", "Set message log channel")
+                                    .addOption(OptionType.CHANNEL, "channel", "Channel for message logs", true))
+                            .addSubcommands(new SubcommandData("appealurl", "Set an appeal url for users to appeal at when they are timed out or banned")
+                                    .addOption(OptionType.STRING, "appeallink", "Appeal url", true)))
+                            //.addSubcommands(new SubcommandData("toggleappeal", "Toggle appeal url")))
 
                     .addCommands(Commands.slash("moderate", "Moderate a user with different options")
                             .setGuildOnly(true)
                             .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
                             .addOption(OptionType.USER,"user","User to Moderate",true)
                             .addOption(OptionType.BOOLEAN,"bypass","Bypass the final confirmation?",false))
+
                     .addCommands(Commands.slash("timeout", "Timeout a user")
                             .setGuildOnly(true)
                             .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
                             .addOption(OptionType.USER,"user","User to Timeout",true))
+
                     .addCommands(Commands.slash("searchcase", "View a discord punishment case")
                             .setGuildOnly(true)
                             .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
-                            .addOption(OptionType.STRING,"caseid","Case ID of the punishment",true)).queue();
+                            .addOption(OptionType.STRING,"caseid","Case ID of the punishment",true))
 
-            Objects.requireNonNull(Objects.requireNonNull(jda.getGuildById(GuildID))).upsertCommand("mabadmin","MAB Admin settings")
+                    .addCommands(Commands.slash("purge", "Purge messages")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE))
+                            .addOption(OptionType.STRING,"number","Number of messages to delete",true))
+                    .queue();
+
+            Objects.requireNonNull(Objects.requireNonNull(jda.getGuildById(GuildID))).upsertCommand("mabadmin", "MAB Admin settings")
                     .setGuildOnly(true)
                     .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
                     .addSubcommands(new SubcommandData("banguild", "Ban a guild from using MAB")
@@ -143,7 +197,9 @@ public class TwistedMC extends ListenerAdapter {
                     .addSubcommands(new SubcommandData("beta", "Activate beta features for specified guild")
                             .addOption(OptionType.STRING, "guildid", "Guild ID", true))
                     .addSubcommands(new SubcommandData("maintenance","Put the bot into maintenance"))
-            .queue();
+                    .addSubcommands(new SubcommandData("guildinfo","View MAB Guild Info"))
+                    .addSubcommands(new SubcommandData("shutdown","Shutdown MAB"))
+                    .queue();
 
             Objects.requireNonNull(Objects.requireNonNull(jda.getGuildById(GuildID))).upsertCommand("appeal","Appeal a virtual ban case")
                     .setGuildOnly(true)
@@ -252,13 +308,74 @@ public class TwistedMC extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
+
+        if (event.getName().equals("purge")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            try {
+                if (Main.isBanned(event.getGuild().getIdLong())) {
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
+                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
+                            .queue();
+                    return;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
+                    return;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            OffsetDateTime fiveWeeksAgo = OffsetDateTime.now().minus(5, ChronoUnit.WEEKS);
+
+            int num_messages = (int) event.getOption("number").getAsLong();
+
+            if (num_messages <= 100 && num_messages >= 5) {
+                List<Message> messages = event.getChannel().getHistory().retrievePast(num_messages).complete();
+
+                messages.removeIf(m -> m.getTimeCreated().isBefore(fiveWeeksAgo));
+
+                event.getGuild().getTextChannelById(event.getChannel().getId()).deleteMessages(messages).complete();
+                event.deferReply().setContent(":wastebasket:  Deleted `" + num_messages + "` messages!").setEphemeral(true).queue();
+
+                try {
+                    event.getGuild().getTextChannelById(Main.getLogChannel(String.valueOf(event.getGuild().getIdLong()))).sendMessage(":wastebasket:  Deleted `" + num_messages
+                            + "` messages in " + event.getGuild().getTextChannelById(event.getChannel().getId()).getAsMention()
+                            + " by " + event.getMember().getAsMention()).queue();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                event.deferReply().setContent("**ERROR!** " + num_messages + " is not within the range of `5-100`!").setEphemeral(true).queue();
+            }
+
+            return;
+        }
+
         if (event.getName().equals("maintenance")) {
 
             if (!event.isFromGuild()) {
                 event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
                 return;
             } else if (event.getGuild().getOwnerIdLong() != 478410064919527437L) {
-                event.reply("You cannot use **/maintenance** in this guild!").setEphemeral(true).queue();
+                event.reply("**HOLD UP!** You cannot use **/maintenance** in this guild!").setEphemeral(true).queue();
                 return;
             }
 
@@ -286,8 +403,8 @@ public class TwistedMC extends ListenerAdapter {
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
-                                    "below:")
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
@@ -300,22 +417,22 @@ public class TwistedMC extends ListenerAdapter {
 
             try {
                 if (!Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && Main.logChannelSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
-                if (Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())).contains("https://")) {
-                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL does not contain `https://`! Please fix it with `/mab settings`!").setEphemeral(true).queue();
+                if (Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !isUrl(Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())))) {
+                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
             } catch (SQLException e) {
@@ -334,7 +451,7 @@ public class TwistedMC extends ListenerAdapter {
                         try {
                             while (resultSet.next()) {
                                 EmbedBuilder embedBuilder = new EmbedBuilder();
-                                embedBuilder.setFooter(footer);
+                                embedBuilder.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
                                 embedBuilder.setTimestamp(new Date().toInstant());
                                 embedBuilder.setColor(new Color(115, 192, 195));
                                 embedBuilder.setTitle("Viewing Case: " + id);
@@ -361,7 +478,7 @@ public class TwistedMC extends ListenerAdapter {
                         emb.setColor(new Color(255, 89, 89));
                         emb.setDescription("Case with ID `" + id + "` could not be found!");
                         emb.setTimestamp(new Date().toInstant());
-                        emb.setFooter(footer);
+                        emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
                         hook.editOriginalEmbeds().setEmbeds(emb.build()).queue();
                         emb.clear();
                         emb = null;
@@ -369,10 +486,11 @@ public class TwistedMC extends ListenerAdapter {
                     }
                 } catch (SQLException | ClassNotFoundException e) {
                     e.printStackTrace();
-                    event.reply("Something went wrong!").setEphemeral(true).queue();
+                    event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
                 }
             });
         }
+
         if (event.getName().equals("bugreport")) {
 
             if (!event.isFromGuild()) {
@@ -450,8 +568,8 @@ public class TwistedMC extends ListenerAdapter {
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
-                                    "below:")
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
@@ -483,22 +601,22 @@ public class TwistedMC extends ListenerAdapter {
 
             try {
                 if (!Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && Main.logChannelSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
-                if (Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())).contains("https://")) {
-                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL does not contain `https://`! Please fix it with `/mab settings`!").setEphemeral(true).queue();
+                if (Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !isUrl(Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())))) {
+                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
             } catch (SQLException e) {
@@ -518,6 +636,12 @@ public class TwistedMC extends ListenerAdapter {
             }
 
             User user = event.getOption("user").getAsUser();
+
+            if (user.isBot()) {
+                event.reply("**ERROR!** Cannot use on bot!").setEphemeral(true).queue();
+                return;
+            }
+
             if (modConfirmBypass.containsKey(event.getUser().getId())) {
                 modConfirmBypass.remove(event.getUser().getId());
             }
@@ -560,7 +684,7 @@ public class TwistedMC extends ListenerAdapter {
                 emb.setColor(new Color(253, 216, 1));
                 emb.setDescription("**Please select the moderation action command!**");
                 emb.setTimestamp(new Date().toInstant());
-                emb.setFooter(footer);
+                emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
             } else if (event.getGuild().getIdLong() != 549595806009786388L) {
                 SelectMenu menu = SelectMenu.create("menu:modaction")
@@ -579,7 +703,7 @@ public class TwistedMC extends ListenerAdapter {
                 emb.setColor(new Color(253, 216, 1));
                 emb.setDescription("**Please select the moderation action command!**");
                 emb.setTimestamp(new Date().toInstant());
-                emb.setFooter(footer);
+                emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
             }
             return;
@@ -719,8 +843,8 @@ public class TwistedMC extends ListenerAdapter {
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
-                                    "below:")
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
@@ -760,6 +884,11 @@ public class TwistedMC extends ListenerAdapter {
                 return;
             }
 
+            if (Objects.requireNonNull(event.getOption("user")).getAsUser().isBot()) {
+                event.reply("**ERROR!** Cannot use on bot!").setEphemeral(true).queue();
+                return;
+            }
+
             timeoutMember.put(event.getUser(), Objects.requireNonNull(event.getOption("user")).getAsUser());
             guildID.put(event.getUser(), event.getGuild().getId());
 
@@ -784,17 +913,17 @@ public class TwistedMC extends ListenerAdapter {
             return;
         }
 
-        if (event.getSubcommandName().equals("settings")) {
+        if (event.getSubcommandName().equals("punishmentlog")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("**ERROR!** This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
-                                    "below:")
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
@@ -824,13 +953,12 @@ public class TwistedMC extends ListenerAdapter {
                 throw new RuntimeException(e);
             }
 
-            String channelID = event.getOption("channelid").getAsString();
-            String appealLink = event.getOption("appeallink").getAsString();
+            GuildChannelUnion channelID = event.getOption("channel").getAsChannel();
 
-            TextChannel textChannel = jda.getTextChannelById(channelID);
+            TextChannel textChannel = jda.getTextChannelById(channelID.getIdLong());
 
             if (textChannel == null) {
-                event.reply("There is no valid text channel with the ID: " + channelID + "!").queue();
+                event.reply("**ERROR!** There is no valid text channel with the ID: " + channelID + "!").queue();
             } else {
 
                 try {
@@ -839,10 +967,9 @@ public class TwistedMC extends ListenerAdapter {
 
                     textChannel.createWebhook("MAB").setAvatar(Icon.from(connection.getInputStream())).complete();
 
-                    event.reply("Mod Log Channel Set: " + jda.getTextChannelById(channelID).getAsMention() + "\n" + "Appeal URL Set: " + appealLink).queue();
+                    event.reply("Punishment Log Channel Set: " + jda.getTextChannelById(channelID.getIdLong()).getAsMention()).queue();
                     try {
-                        Main.updateChannelID(event.getGuild().getId(), channelID);
-                        Main.updateAppealLink(event.getGuild().getId(), appealLink);
+                        Main.updateChannelID(event.getGuild().getId(), String.valueOf(channelID.getIdLong()));
                     } catch (SQLException e) {
                         throw new RuntimeException(e);
                     } catch (ClassNotFoundException e) {
@@ -855,17 +982,150 @@ public class TwistedMC extends ListenerAdapter {
             return;
         }
 
-        if (event.getSubcommandName().equals("fixwebhook")) {
+        if (event.getSubcommandName().equals("messagelog")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("**ERROR!** This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a ticket using the button " +
-                                    "below:")
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
+                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
+                            .queue();
+                    return;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                if (Main.isMaintenance("MAB") && event.getGuild().getOwnerIdLong() != 478410064919527437L && event.getUser().getIdLong() != 478410064919527437L) {
+                    try {
+                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                                .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
+                                .queue();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            GuildChannelUnion channelID = event.getOption("channel").getAsChannel();
+
+            TextChannel textChannel = jda.getTextChannelById(channelID.getIdLong());
+
+            if (textChannel == null) {
+                event.reply("**ERROR!** There is no valid text channel with the ID: " + channelID + "!").queue();
+            } else {
+
+                try {
+                    URLConnection connection = new URL("https://twistedmcstudios.com/images/MABLogo.png").openConnection();
+                    connection.setRequestProperty("User-Agent", "Bot MAB");
+
+                    textChannel.createWebhook("MAB").setAvatar(Icon.from(connection.getInputStream())).complete();
+
+                    event.reply("Message Log Channel Set: " + jda.getTextChannelById(channelID.getIdLong()).getAsMention()).queue();
+                    try {
+                        Main.updateMessageLog(event.getGuild().getId(), String.valueOf(channelID.getIdLong()));
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return;
+        }
+
+        if (event.getSubcommandName().equals("appealurl")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**ERROR!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            try {
+                if (Main.isBanned(event.getGuild().getIdLong())) {
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
+                            .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
+                            .queue();
+                    return;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                if (Main.isMaintenance("MAB") && event.getGuild().getOwnerIdLong() != 478410064919527437L && event.getUser().getIdLong() != 478410064919527437L) {
+                    try {
+                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                                .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
+                                .queue();
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            
+            String appealLink = event.getOption("appeallink").getAsString();
+
+            if (!isUrl(appealLink)) {
+                event.reply("**ERROR!** Appeal URL is not a valid URL!").queue();
+                return;
+            }
+            try {
+                URLConnection connection = new URL("https://twistedmcstudios.com/images/MABLogo.png").openConnection();
+                connection.setRequestProperty("User-Agent", "Bot MAB");
+
+                event.reply("Appeal URL Set: " + appealLink).queue();
+                try {
+                    Main.updateAppealLink(event.getGuild().getId(), appealLink);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
+
+        if (event.getSubcommandName().equals("fixwebhook")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**ERROR!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            try {
+                if (Main.isBanned(event.getGuild().getIdLong())) {
+                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                    "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
                             .queue();
                     return;
@@ -897,22 +1157,22 @@ public class TwistedMC extends ListenerAdapter {
 
             try {
                 if (!Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && Main.logChannelSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mab settings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
-                if (Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())).contains("https://")) {
-                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL does not contain `https://`! Please fix it with `/mab settings`!").setEphemeral(true).queue();
+                if (Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !isUrl(Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())))) {
+                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
             } catch (SQLException e) {
@@ -942,6 +1202,86 @@ public class TwistedMC extends ListenerAdapter {
             return;
         }
 
+        if (event.getSubcommandName().equals("shutdown")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            if (event.getUser().getIdLong() == 478410064919527437L || event.getUser().getIdLong() == 208757906428919808L) {
+
+                event.reply("Shutting down MAB..").queue();
+
+                ProxyServer.getInstance().getScheduler().schedule(BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD"), new Runnable() {
+                    public void run() {
+                        event.getChannel().asTextChannel().sendMessage("Shutdown complete!").queue();
+
+                        ProxyServer.getInstance().getScheduler().schedule(BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD"), new Runnable() {
+                            public void run() {
+                                stop();
+                            }
+                        }, 10, TimeUnit.MILLISECONDS);
+                    }
+                }, 1, TimeUnit.SECONDS);
+
+            } else {
+                event.reply("**HOLD UP!** You do not have permission to do this!").queue();
+                return;
+            }
+            return;
+        }
+
+        if (event.getSubcommandName().equals("guildinfo")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            if (event.getUser().getIdLong() == 478410064919527437L || event.getUser().getIdLong() == 208757906428919808L) {
+
+                EmbedBuilder eb = new EmbedBuilder();
+
+                eb.setTitle("Guild Info", null);
+
+                eb.setColor(new Color(0, 148, 255));
+
+                eb.addField("Server Owner", event.getGuild().getOwner().getAsMention(), true);
+
+                try {
+                    if (Main.isBeta(event.getGuild().getIdLong())) {
+                        eb.addField("Beta Features", "Yes", true);
+                    } else if (!Main.isBeta(event.getGuild().getIdLong())) {
+                        eb.addField("Beta Features", "No", true);
+                    }
+
+                    if (Main.isBanned(event.getGuild().getIdLong())) {
+                        eb.addField("Banned", "Yes", true);
+                    } else if (!Main.isBanned(event.getGuild().getIdLong())) {
+                        eb.addField("Banned", "No", true);
+                    }
+
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+
+
+                eb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                eb.setTimestamp(new Date().toInstant());
+
+                event.replyEmbeds(eb.build()).queue();
+
+
+            } else {
+                event.reply("**HOLD UP!** You do not have permission to do this!").queue();
+                return;
+            }
+            return;
+        }
+
         if (event.getSubcommandName().equals("banguild")) {
 
             if (!event.isFromGuild()) {
@@ -957,18 +1297,15 @@ public class TwistedMC extends ListenerAdapter {
                 Guild guild = jda.getGuildById(guildID);
 
                 if (guild == null) {
-                    event.deferReply().setContent("There is no valid guild with the ID: `" + guildID + "`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** There is no valid guild with the ID: `" + guildID + "`!").setEphemeral(true).queue();
                 } else {
                     event.deferReply().setContent("Successfully banned guild with the ID: `" + guildID + "` from using MAB!").queue();
 
-                    guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage("**SORRY!** Your guild, **" + guild.getName() + "** has been suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was done in error, create a " +
-                            "ticket" +
-                            " " +
-                            "by" +
-                            " " +
-                            "joining the " +
-                            "discord below:\ndiscord.gg/twistedmc").queue());
-                    guild.leave().queue();
+                    guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage(
+                                    "**SORRY!** Your guild, **" + guild.getName() + "** has been suspended from using the MAB bot due to abuse and/or spamming." +
+                                            "\n\nIf you believe this was done in error, create a ticket using the button below:")
+                            .setActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
+                            .queue());
 
                     try {
                         Main.insertBan(guildID, reason);
@@ -999,7 +1336,7 @@ public class TwistedMC extends ListenerAdapter {
                 Guild guild = jda.getGuildById(guildID);
 
                 if (guild == null) {
-                    event.deferReply().setContent("There is no valid guild with the ID: `" + guildID + "`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("**HOLD UP!** There is no valid guild with the ID: `" + guildID + "`!").setEphemeral(true).queue();
                 } else {
 
                     try {
@@ -1015,7 +1352,8 @@ public class TwistedMC extends ListenerAdapter {
 
                     event.deferReply().setContent("Successfully activated BETA features for guild with the ID: `" + guildID + "`!").queue();
 
-                    guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage("**WOO HOO!** BETA features have been activated for your guild, **" + guild.getName() + "**!").queue());
+                    guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage(
+                            "**WOO HOO!** BETA features have been activated for your guild, **" + guild.getName() + "**!").queue());
 
                     try {
                         Main.activateBeta(guildID);
@@ -1032,6 +1370,257 @@ public class TwistedMC extends ListenerAdapter {
             }
             return;
         }
+
+        if (event.getSubcommandName().equals("play")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            String url = event.getOption("url").getAsString();
+
+            if (event.getChannelType().isThread() || event.getChannelType().isAudio()) {
+                event.reply("**HOLD UP!** This command can only be done in text channels!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (!Objects.requireNonNull(event.getMember().getVoiceState()).inAudioChannel()) {
+                event.reply("**HOLD UP!** You need to be in a voice channel!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (event.getGuild().getAudioManager().isConnected()) {
+                if (event.getGuild().getAudioManager().getConnectedChannel().getIdLong() != event.getMember().getVoiceState().getChannel().getIdLong()) {
+                    event.reply("**HOLD UP!** You are not in the same voice channel as me!").setEphemeral(true).queue();
+                    return;
+                }
+            }
+
+            String link = url;
+
+            if (!isUrl(url)) {
+                link = "ytsearch:" + link;
+            }
+
+            PlayerManager.getInstance().audioPlayerManager.loadItemOrdered(PlayerManager.getInstance().getMusicManager(event.getGuild()), link, new AudioLoadResultHandler() {
+                @Override
+                public void trackLoaded(AudioTrack audioTrack) {
+                    PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.queue(audioTrack, event.getChannel().asTextChannel());
+
+                    event.reply(":musical_note:  Adding to queue: `" + audioTrack.getInfo().title + "` by `" + audioTrack.getInfo().author + "`").queue();
+
+                    final AudioManager audioManager = event.getGuild().getAudioManager();
+                    AudioChannel memberChannel = event.getMember().getVoiceState().getChannel();
+
+                    if (!event.getGuild().getAudioManager().isConnected()) {
+                        audioManager.openAudioConnection(memberChannel);
+                        assert memberChannel != null;
+                    }
+
+                }
+
+                @Override
+                public void playlistLoaded(AudioPlaylist audioPlaylist) {
+                    List<AudioTrack> tracks = audioPlaylist.getTracks();
+
+                    event.reply(":musical_note:  Adding to queue: " + String.valueOf(tracks.size()) + " tracks from playlist `" + audioPlaylist.getName() + "`").queue();
+
+                    for (final AudioTrack track : tracks) {
+                        PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.queue(track, event.getChannel().asTextChannel());
+
+                    }
+
+                    final AudioManager audioManager = event.getGuild().getAudioManager();
+                    AudioChannel memberChannel = event.getMember().getVoiceState().getChannel();
+
+                    if (!event.getGuild().getAudioManager().isConnected()) {
+                        audioManager.openAudioConnection(memberChannel);
+                        assert memberChannel != null;
+                    }
+                }
+
+                @Override
+                public void noMatches() {
+
+                }
+
+                @Override
+                public void loadFailed(FriendlyException e) {
+
+                }
+            });
+
+        }
+
+        if (event.getSubcommandName().equals("join")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            final GuildVoiceState memberVoiceState = event.getMember().getVoiceState();
+
+            assert memberVoiceState != null;
+
+            if (event.getChannelType().isThread() || event.getChannelType().isAudio()) {
+                event.reply("**HOLD UP!** This command can only be done in text channels!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (!Objects.requireNonNull(event.getMember().getVoiceState()).inAudioChannel()) {
+                event.reply("**HOLD UP!** You need to be in a voice channel!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (event.getGuild().getAudioManager().isConnected()) {
+                event.reply("**HOLD UP!** I'm already in a voice channel!").setEphemeral(true).queue();
+                return;
+            }
+
+            final AudioManager audioManager = event.getGuild().getAudioManager();
+            AudioChannel memberChannel = memberVoiceState.getChannel();
+
+            audioManager.openAudioConnection(memberChannel);
+            assert memberChannel != null;
+
+            event.reply(":musical_note:  Connecting to " + memberChannel.getName() + "...").queue();
+
+        }
+
+        if (event.getSubcommandName().equals("clearqueue")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            final GuildVoiceState memberVoiceState = event.getMember().getVoiceState();
+
+            assert memberVoiceState != null;
+
+            if (event.getChannelType().isThread() || event.getChannelType().isAudio()) {
+                event.reply("**HOLD UP!** This command can only be done in text channels!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (!Objects.requireNonNull(event.getMember().getVoiceState()).inAudioChannel()) {
+                event.reply("**HOLD UP!** You need to be in a voice channel!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (event.getGuild().getAudioManager().isConnected()) {
+                if (event.getGuild().getAudioManager().getConnectedChannel().getIdLong() != event.getMember().getVoiceState().getChannel().getIdLong()) {
+                    event.reply("**HOLD UP!** You are not in the same voice channel as me!").setEphemeral(true).queue();
+                    return;
+                }
+            }
+
+            GuildMusicManager musicManager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+
+            musicManager.scheduler.queue.clear();
+
+            event.reply(":musical_note:  Cleared music queue!").queue();
+
+        }
+
+        if (event.getSubcommandName().equals("stop")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            final GuildVoiceState memberVoiceState = event.getMember().getVoiceState();
+
+            assert memberVoiceState != null;
+
+            if (event.getChannelType().isThread() || event.getChannelType().isAudio()) {
+                event.reply("**HOLD UP!** This command can only be done in text channels!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (!Objects.requireNonNull(event.getMember().getVoiceState()).inAudioChannel()) {
+                event.reply("**HOLD UP!** You need to be in a voice channel!").setEphemeral(true).queue();
+                return;
+            }
+
+            if (event.getGuild().getAudioManager().isConnected()) {
+                if (event.getGuild().getAudioManager().getConnectedChannel().getIdLong() != event.getMember().getVoiceState().getChannel().getIdLong()) {
+                    event.reply("**HOLD UP!** You are not in the same voice channel as me!").setEphemeral(true).queue();
+                    return;
+                }
+            }
+
+            final AudioManager audioManager = event.getGuild().getAudioManager();
+            AudioChannel memberChannel = memberVoiceState.getChannel();
+
+            audioManager.closeAudioConnection();
+            assert memberChannel != null;
+
+            GuildMusicManager musicManager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+
+            musicManager.scheduler.queue.clear();
+            musicManager.scheduler.player.stopTrack();
+
+            event.reply(":musical_note:  Stopped!").queue();
+
+        }
+
+        if (event.getSubcommandName().equals("queue")) {
+
+            if (!event.isFromGuild()) {
+                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                return;
+            }
+
+            final GuildMusicManager musicManager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+            BlockingQueue<AudioTrack> queue = musicManager.scheduler.queue;
+
+            if (queue.isEmpty()) {
+                event.reply(":frowning2:  Looks like the music queue is empty!").setEphemeral(true).queue();
+                return;
+            }
+
+            event.reply(":musical_note:  Viewing queue..").queue();
+
+            final int trackCount = Math.min(queue.size(), 6);
+            final List<AudioTrack> trackList = new ArrayList<>(queue);
+            final MessageCreateAction messageAction = event.getChannel().asTextChannel().sendMessage("\n");
+            /*for (int i = 0; i < trackCount; i++) {
+                final AudioTrack track = trackList.get(i);
+                final AudioTrackInfo info = track.getInfo();
+
+                messageAction.("**#")
+                        .append(String.valueOf(i+1))
+                        .append("** `")
+                        .append(info.title)
+                        .append("` by `")
+                        .append(info.author)
+                        .append("` [`")
+                        .append(formatTime(track.getDuration()))
+                        .append("`]\n");
+            }
+
+            if (trackList.size() > trackCount) {
+                messageAction.append("**")
+                        .append(String.valueOf(trackList.size() - trackCount))
+                        .append(" more...**");
+            }
+
+            messageAction.queue();*/
+
+        }
+
+    }
+
+    private String formatTime(long duration) {
+        final long hours = duration / TimeUnit.HOURS.toMillis(1);
+        final long minutes = duration / TimeUnit.MINUTES.toMillis(1);
+        final long seconds = duration % TimeUnit.MINUTES.toMillis(1) / TimeUnit.SECONDS.toMillis(1);
+
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
     @Override
@@ -1062,13 +1651,12 @@ public class TwistedMC extends ListenerAdapter {
             eb.setColor(new Color(0, 148, 255));
 
             eb.setDescription("Minecraft version: **" + version + "**\nBug: **" + bug + "**");
-            eb.setFooter("© " + year + " TwistedMC Studios");
+            eb.setFooter("© " + year + " TwistedMC Studios", "https://twistedmcstudios.com/images/MABLogo.png");
             eb.setTimestamp(new Date().toInstant());
 
-            ticket.sendMessageEmbeds(eb.build()).content(event.getMember().getAsMention() + " use this channel to post any other information or screenshots that can help us out :)").queue();
+            ticket.sendMessageEmbeds(eb.build()).setMessageReference(event.getMember().getAsMention() + " use this channel to post any other information or screenshots that can help us out :)").queue();
             event.reply("Thank you for your bug report!").setEphemeral(true).queue();
         }
-
         if (event.getModalId().equalsIgnoreCase("timeout:timeout")) {
             Guild g = getJDA().getGuildById(event.getGuild().getId());
             ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
@@ -1077,7 +1665,7 @@ public class TwistedMC extends ListenerAdapter {
             String timeunitValue = event.getValue("timeout:timeunit").getAsString();
 
             if (durationValue.matches("[a-zA-Z]+")){
-                event.reply("Invalid duration! Integer required!").setEphemeral(true).queue();
+                event.reply("**ERROR!** Invalid Duration! Integer required!").setEphemeral(true).queue();
                 timeoutMember.remove(event.getUser());
                 guildID.remove(event.getUser());
                 return;
@@ -1086,7 +1674,7 @@ public class TwistedMC extends ListenerAdapter {
             int duration = Integer.parseInt(durationValue);
 
             if (!timeunitValue.equalsIgnoreCase("seconds") && !timeunitValue.equalsIgnoreCase("minutes") && !timeunitValue.equalsIgnoreCase("hours") && !timeunitValue.equalsIgnoreCase("days")) {
-                event.reply("Invalid TimeUnit! MAC Cancelled!").setEphemeral(true).queue();
+                event.reply("**ERROR!** Invalid Timeunit! MAC Cancelled!").setEphemeral(true).queue();
                 timeoutMember.remove(event.getUser());
                 guildID.remove(event.getUser());
                 return;
@@ -1096,7 +1684,7 @@ public class TwistedMC extends ListenerAdapter {
                     timeUnit == TimeUnit.HOURS && duration > 672 ||
                     timeUnit == TimeUnit.MINUTES && duration > 40320 ||
                     timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                event.reply("Invalid Duration! MAC Cancelled!").queue();
+                event.reply("**ERROR!** Invalid Duration! MAC Cancelled!").queue();
                 timeoutMember.remove(event.getUser());
                 guildID.remove(event.getUser());
                 return;
@@ -1177,7 +1765,6 @@ public class TwistedMC extends ListenerAdapter {
                 e.printStackTrace();
             }
         }
-
         if (event.getModalId().equalsIgnoreCase("suggestion")) {
             String server = event.getValue("server").getAsString();
             String feedback = event.getValue("feedback").getAsString();
@@ -1206,7 +1793,7 @@ public class TwistedMC extends ListenerAdapter {
             eb.setColor(new Color(0, 148, 255));
 
             eb.setDescription("Server: **" + server + "**\n\nFeedback: **" + feedback + "**\n\nExamples: **" + examples + "**\n\nAdditional Info: **" + additional + "**");
-            eb.setFooter("© " + year + " TwistedMC Studios");
+            eb.setFooter("© " + year + " TwistedMC Studios", "https://twistedmcstudios.com/images/MABLogo.png");
             eb.setTimestamp(new Date().toInstant());
 
             ticket.sendMessageEmbeds(eb.build()).queue();
@@ -1368,7 +1955,7 @@ public class TwistedMC extends ListenerAdapter {
                         return;
                     }
                     if (data[1].equalsIgnoreCase("timeout")) {
-                         ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
+                        ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
                         String caseID = "#" + Main.generateRandomID(7);
                         String unit = event.getValue("mac:to:unit").getAsString();
                         int duration = Integer.parseInt(event.getValue("mac:to:duration").getAsString());
@@ -1377,7 +1964,7 @@ public class TwistedMC extends ListenerAdapter {
                                 timeUnit == TimeUnit.HOURS && duration > 672 ||
                                 timeUnit == TimeUnit.MINUTES && duration > 40320 ||
                                 timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                            event.reply("Invalid Duration! MAC Cancelled!").queue();
+                            event.reply("**ERROR!** Invalid Duration! MAC Cancelled!").queue();
                             removeUserFromMACMaps(event.getUser().getId());
                             return;
                         }
@@ -1441,19 +2028,19 @@ public class TwistedMC extends ListenerAdapter {
                     EmbedBuilder confirm_msg = new EmbedBuilder();
                     confirm_msg.setTitle("Confirm Moderation Action?");
                     if (data[1].equalsIgnoreCase("timeout")) {
-                        confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
-                                + "**Action:** **`" + data[1].toUpperCase() + "`** \n"
-                                + "**Duration:** **`" + event.getValue("mac:to:duration").getAsString() + "`** \n"
-                                + "**TimeUnit:** **`" + event.getValue("mac:to:unit").getAsString() + "`** \n"
-                                + "**Reason:** **`" + event.getValue("mac:reasoninput").getAsString() + "`**"
+                        confirm_msg.setDescription("**User:** " + target.getAsMention() + "\nID: " + target.getId() + " \n"
+                                + "**Action:** " + data[1] + "\n"
+                                + "**Duration:** " + event.getValue("mac:to:duration").getAsString() + "\n"
+                                + "**Timeunit:** " + event.getValue("mac:to:unit").getAsString().toLowerCase() + "\n"
+                                + "**Reason:** " + event.getValue("mac:reasoninput").getAsString() + ""
                         );
                     } else {
-                        confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
-                                + "**Action:** **`" + data[1].toUpperCase() + "`** \n"
-                                + "**Reason:** **`" + event.getValue("mac:reasoninput").getAsString() + "`**"
+                        confirm_msg.setDescription("**User:** " + target.getAsMention() + "\nID: " + target.getId() + "\n"
+                                + "**Action:** " + data[1] + "\n"
+                                + "**Reason:** " + event.getValue("mac:reasoninput").getAsString() + ""
                         );
                     }
-                    confirm_msg.setFooter(footer);
+                    confirm_msg.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
                     confirm_msg.setTimestamp(new Date().toInstant());
                     confirm_msg.setColor(new Color(253, 216, 1));
                     SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
@@ -1475,7 +2062,7 @@ public class TwistedMC extends ListenerAdapter {
                 }
             } catch (SQLException | ClassNotFoundException | NullPointerException | IllegalArgumentException e) {
                 e.printStackTrace();
-                event.reply("Something went wrong!").setEphemeral(true).queue();
+                event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
             }
         }
     }
@@ -1494,7 +2081,7 @@ public class TwistedMC extends ListenerAdapter {
                     e.printStackTrace();
                 }
                 StringBuilder sb = new StringBuilder();
-                sb.append("**Total SHIELD Reports:** **`").append(SRs).append("`**").append("\n\n__**Most Recent SHIELD Reports**__ \n");
+                sb.append("**Total SHIELD Reports:** ").append(SRs).append("").append("\n\n__**Most Recent SHIELD Reports**__ \n");
                 List<String> reports = null;
                 try {
                     reports = Main.getSHIELDReportList(10);
@@ -1526,7 +2113,7 @@ public class TwistedMC extends ListenerAdapter {
                     e.printStackTrace();
                 }
                 StringBuilder accountsSB = new StringBuilder();
-                accountsSB.append("**Total Player Accounts:** **`").append(Accs).append("`**").append("\n\n__**Most Recent Player Accounts**__ \n");
+                accountsSB.append("**Total Player Accounts:** ").append(Accs).append("").append("\n\n__**Most Recent Player Accounts**__ \n");
                 EmbedBuilder accEmb = new EmbedBuilder();
                 AccountsData.stream().forEach(entry -> accountsSB.append(entry));
                 accEmb.setTimestamp(new Date().toInstant());
@@ -1552,7 +2139,7 @@ public class TwistedMC extends ListenerAdapter {
                     e.printStackTrace();
                 }
                 StringBuilder bansSB = new StringBuilder();
-                bansSB.append("**Total Banned Players:** **`").append(Bans).append("`**").append("\n\n__**Most Recent Player Bans**__ \n");
+                bansSB.append("**Total Banned Players:** ").append(Bans).append("").append("\n\n__**Most Recent Player Bans**__ \n");
                 EmbedBuilder banEmb = new EmbedBuilder();
                 BansData.stream().forEach(entry -> bansSB.append(entry));
                 banEmb.setTimestamp(new Date().toInstant());
@@ -1578,7 +2165,7 @@ public class TwistedMC extends ListenerAdapter {
                     e.printStackTrace();
                 }
                 StringBuilder mutesSB = new StringBuilder();
-                mutesSB.append("**Total Muted Players:** **`").append(Mutes).append("`**").append("\n\n__**Most Recent Player Mutes**__ \n");
+                mutesSB.append("**Total Muted Players:** ").append(Mutes).append("").append("\n\n__**Most Recent Player Mutes**__ \n");
                 EmbedBuilder muteEmb = new EmbedBuilder();
                 MutesData.stream().forEach(entry -> mutesSB.append(entry));
                 muteEmb.setTimestamp(new Date().toInstant());
@@ -1604,7 +2191,7 @@ public class TwistedMC extends ListenerAdapter {
                     e.printStackTrace();
                 }
                 StringBuilder blSB = new StringBuilder();
-                blSB.append("**Total Banned Players:** **`").append(BLs).append("`**").append("\n\n__**Most Recent Player BlackLists**__ \n");
+                blSB.append("**Total Banned Players:** ").append(BLs).append("").append("\n\n__**Most Recent Player BlackLists**__ \n");
                 EmbedBuilder BLEmb = new EmbedBuilder();
                 BlacklistData.stream().forEach(entry -> blSB.append(entry));
                 BLEmb.setTimestamp(new Date().toInstant());
@@ -1618,25 +2205,25 @@ public class TwistedMC extends ListenerAdapter {
             }
         }
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:modaction")) {
-            try {
-                String[] data = modMap.get(event.getUser().getId());
-                SelectMenu fakemenu = event.getSelectMenu().createCopy().setPlaceholder("Command Selected").setDisabled(true).build();
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-cancel")) {
-                    modMap.remove(event.getUser().getId());
-                    modConfirmBypass.remove(event.getUser().getId());
-                    modMapUser.remove(event.getUser().getId());
-                    event.reply("Command Cancelled!").setEphemeral(true).queue();
-                    event.editSelectMenu(fakemenu).queue();
-                    return;
-                }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-ca")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(ModeratorRole);
-                    permList.add(srModRole);
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
-                        if (modConfirmBypass.get(event.getUser().getId())) {
+            String[] data = modMap.get(event.getUser().getId());
+            SelectMenu fakemenu = event.getSelectMenu().createCopy().setPlaceholder("Command Selected").setDisabled(true).build();
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-cancel")) {
+                modMap.remove(event.getUser().getId());
+                modConfirmBypass.remove(event.getUser().getId());
+                modMapUser.remove(event.getUser().getId());
+                event.reply("Command Cancelled!").setEphemeral(true).queue();
+                event.editSelectMenu(fakemenu).queue();
+                return;
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-ca")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(ModeratorRole);
+                permList.add(srModRole);
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
+                    if (modConfirmBypass.get(event.getUser().getId())) {
+                        try {
                             String caseID = "#" + Main.generateRandomID(7);
                             User target = modMapUser.get(event.getUser().getId());
                             Guild g = getJDA().getGuildById(event.getGuild().getId());
@@ -1667,60 +2254,90 @@ public class TwistedMC extends ListenerAdapter {
 
                             Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID, guildID.get(event.getUser()));
                             event.editSelectMenu(fakemenu).queue();
-                            /*permList.clear();
-                            permList = null;*/
-                            return;
-                        } else {
-                            User target = modMapUser.get(event.getUser().getId());
-                            EmbedBuilder confirm_msg = new EmbedBuilder();
-                            confirm_msg.setTitle("Confirm Moderation Action?");
-                            confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`** \n"
-                                    + "**Action:** **`" + ModerationCommandAction.SCAMBAN.getActionLabel() + "`** \n"
-                                    + "**Reason:** **`" + ModerationCommandAction.SCAMBAN.getDefaultReason() + "`**"
-                            );
-                            confirm_msg.setFooter(footer);
-                            confirm_msg.setTimestamp(new Date().toInstant());
-                            confirm_msg.setColor(new Color(253, 216, 1));
-                            SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
-                                    .addOption("Yes", "confirm-yes")
-                                    .addOption("No", "confirm-no")
-                                    .setPlaceholder("Confirm this action?")
-                                    .setRequiredRange(1, 1)
-                                    .build();
-                            data[1] = ModerationCommandAction.SCAMBAN.getActionLabel();
-                            data[2] = ModerationCommandAction.SCAMBAN.getDefaultReason();
-                            modMap.put(event.getUser().getId(), data);
-                            event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
-                            confirm_msg.clear();
-                            confirm_msg = null;
-                            event.editSelectMenu(fakemenu).queue();
-                            /*permList.clear();
-                            permList = null;*/
-                            return;
+                        /*permList.clear();
+                        permList = null;*/
                         }
+                        catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255,89,89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        }
+                        catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255,89,89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                        return;
                     } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
+                        User target = modMapUser.get(event.getUser().getId());
+                        EmbedBuilder confirm_msg = new EmbedBuilder();
+                        confirm_msg.setTitle("Confirm Moderation Action?");
+                        confirm_msg.setDescription("**User:** " + target.getAsMention() + "\nID: " + target.getId() + " \n"
+                                + "**Action:** " + ModerationCommandAction.SCAMBAN.getActionLabel() + " \n"
+                                + "**Reason:** " + ModerationCommandAction.SCAMBAN.getDefaultReason() + ""
+                        );
+                        confirm_msg.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                        confirm_msg.setTimestamp(new Date().toInstant());
+                        confirm_msg.setColor(new Color(253, 216, 1));
+                        SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
+                                .addOption("Yes", "confirm-yes")
+                                .addOption("No", "confirm-no")
+                                .setPlaceholder("Confirm this action?")
+                                .setRequiredRange(1, 1)
+                                .build();
+                        data[1] = ModerationCommandAction.SCAMBAN.getActionLabel();
+                        data[2] = ModerationCommandAction.SCAMBAN.getDefaultReason();
+                        modMap.put(event.getUser().getId(), data);
+                        event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
+                        confirm_msg.clear();
+                        confirm_msg = null;
                         event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
                         /*permList.clear();
                         permList = null;*/
                         return;
                     }
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
                 }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-uau")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(ModeratorRole);
-                    permList.add(srModRole);
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
-                        if (modConfirmBypass.get(event.getUser().getId())) {
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-uau")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(ModeratorRole);
+                permList.add(srModRole);
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
+                    if (modConfirmBypass.get(event.getUser().getId())) {
+                        try {
                             User target = modMapUser.get(event.getUser().getId());
                             String caseID = "#" + Main.generateRandomID(7);
                             Guild g = getJDA().getGuildById(event.getGuild().getId());
@@ -1751,245 +2368,267 @@ public class TwistedMC extends ListenerAdapter {
 
                             Main.insertCase(target, ModerationCommandAction.UNDERAGE, data[2], event.getUser(), caseID, guildID.get(event.getUser()));
                             event.editSelectMenu(fakemenu).queue();
-                            /*permList.clear();
-                            permList = null;*/
-                            return;
-                        } else {
-                            User target = modMapUser.get(event.getUser().getId());
-                            EmbedBuilder confirm_msg = new EmbedBuilder();
-                            confirm_msg.setTitle("Confirm Moderation Action?");
-                            confirm_msg.setDescription("**User:** **`" + target.getAsTag() + "`** | (**`" + target.getId() + "`**) \n"
-                                    + "**Action:** **`" + ModerationCommandAction.UNDERAGE.getActionLabel() + "`** \n"
-                                    + "**Reason:** **`" + ModerationCommandAction.UNDERAGE.getDefaultReason() + "`**"
-                            );
-                            confirm_msg.setFooter(footer);
-                            confirm_msg.setTimestamp(new Date().toInstant());
-                            confirm_msg.setColor(new Color(253, 216, 1));
-                            SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
-                                    .addOption("Yes", "confirm-yes")
-                                    .addOption("No", "confirm-no")
-                                    .setPlaceholder("Confirm this action?")
-                                    .setRequiredRange(1, 1)
-                                    .build();
-                            data[1] = ModerationCommandAction.UNDERAGE.getActionLabel();
-                            data[2] = ModerationCommandAction.UNDERAGE.getDefaultReason();
-                            modMap.put(event.getUser().getId(), data);
-                            event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
-                            confirm_msg.clear();
-                            confirm_msg = null;
-                            event.editSelectMenu(fakemenu).queue();
-                            /*permList.clear();
-                            permList = null;*/
-                            return;
+                        /*permList.clear();
+                        permList = null;*/
                         }
-                    } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
-                        /*permList.clear();
-                        permList = null;*/
+                        catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255,89,89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        }
+                        catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255,89,89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
                         return;
-                    }
-                }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-w")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(HelperRole);
-                    permList.add(ModeratorRole);
-                    permList.add(srModRole);
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.MESSAGE_MANAGE)) {
-                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                                .setRequired(true)
-                                .setPlaceholder("Insert reason for moderating this user")
-                                .setRequiredRange(1, 2000)
+                    } else {
+                        User target = modMapUser.get(event.getUser().getId());
+                        EmbedBuilder confirm_msg = new EmbedBuilder();
+                        confirm_msg.setTitle("Confirm Moderation Action?");
+                        confirm_msg.setDescription("**User:** " + target.getAsMention() + "\nID: " + target.getId() + " \n"
+                                + "**Action:** " + ModerationCommandAction.UNDERAGE.getActionLabel() + " \n"
+                                + "**Reason:** " + ModerationCommandAction.UNDERAGE.getDefaultReason() + ""
+                        );
+                        confirm_msg.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                        confirm_msg.setTimestamp(new Date().toInstant());
+                        confirm_msg.setColor(new Color(253, 216, 1));
+                        SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
+                                .addOption("Yes", "confirm-yes")
+                                .addOption("No", "confirm-no")
+                                .setPlaceholder("Confirm this action?")
+                                .setRequiredRange(1, 1)
                                 .build();
-                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                        event.replyModal(modal).queue();
+                        data[1] = ModerationCommandAction.UNDERAGE.getActionLabel();
+                        data[2] = ModerationCommandAction.UNDERAGE.getDefaultReason();
+                        modMap.put(event.getUser().getId(), data);
+                        event.replyEmbeds(confirm_msg.build()).addActionRow(confirm_menu).setEphemeral(true).queue();
+                        confirm_msg.clear();
+                        confirm_msg = null;
                         event.editSelectMenu(fakemenu).queue();
-                        data[1] = ModerationCommandAction.WARN.getActionLabel();
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.MESSAGE_MANAGE.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
                         /*permList.clear();
                         permList = null;*/
                         return;
                     }
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
                 }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-k")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(ModeratorRole);
-                    permList.add(srModRole);
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.KICK_MEMBERS)) {
-                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                                .setRequired(true)
-                                .setPlaceholder("Insert reason for moderating this user")
-                                .setRequiredRange(1, 2000)
-                                .build();
-                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                        event.replyModal(modal).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        data[1] = ModerationCommandAction.KICK.getActionLabel();
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.KICK_MEMBERS.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    }
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-w")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(HelperRole);
+                permList.add(ModeratorRole);
+                permList.add(srModRole);
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.MESSAGE_MANAGE)) {
+                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                            .setRequired(true)
+                            .setPlaceholder("Insert reason for moderating this user")
+                            .setRequiredRange(1, 2000)
+                            .build();
+                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                    event.replyModal(modal).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    data[1] = ModerationCommandAction.WARN.getActionLabel();
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.MESSAGE_MANAGE.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
                 }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-b")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(srModRole);
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
-                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                                .setRequired(true)
-                                .setPlaceholder("Insert reason for moderating this user")
-                                .setRequiredRange(1, 2000)
-                                .build();
-                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                        event.replyModal(modal).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        data[1] = ModerationCommandAction.BAN.getActionLabel();
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    }
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-k")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(ModeratorRole);
+                permList.add(srModRole);
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.KICK_MEMBERS)) {
+                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                            .setRequired(true)
+                            .setPlaceholder("Insert reason for moderating this user")
+                            .setRequiredRange(1, 2000)
+                            .build();
+                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                    event.replyModal(modal).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    data[1] = ModerationCommandAction.KICK.getActionLabel();
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.KICK_MEMBERS.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
                 }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-t")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(HelperRole);
-                    permList.add(ModeratorRole);
-                    permList.add(srModRole);
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.MODERATE_MEMBERS)) {
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-b")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(srModRole);
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
+                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                            .setRequired(true)
+                            .setPlaceholder("Insert reason for moderating this user")
+                            .setRequiredRange(1, 2000)
+                            .build();
+                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                    event.replyModal(modal).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    data[1] = ModerationCommandAction.BAN.getActionLabel();
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
+                }
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-t")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(HelperRole);
+                permList.add(ModeratorRole);
+                permList.add(srModRole);
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.MODERATE_MEMBERS)) {
 
-                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                                .setRequired(true)
-                                .setPlaceholder("Insert reason for moderating this user")
-                                .setRequiredRange(1, 2000)
-                                .build();
-                        TextInput timeunitInput = TextInput.create("mac:to:duration", "Duration of Timeout", TextInputStyle.SHORT)
-                                .setRequired(true)
-                                .setPlaceholder("Insert timeout duration (Max 28 days)")
-                                .setRequiredRange(1, 10)
-                                .build();
-                        TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
-                                .setRequired(true)
-                                .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
-                                .setRequiredRange(1, 50)
-                                .build();
+                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                            .setRequired(true)
+                            .setPlaceholder("Insert reason for moderating this user")
+                            .setRequiredRange(1, 2000)
+                            .build();
+                    TextInput timeunitInput = TextInput.create("mac:to:duration", "Duration of Timeout", TextInputStyle.SHORT)
+                            .setRequired(true)
+                            .setPlaceholder("Insert timeout duration (Max 28 days)")
+                            .setRequiredRange(1, 10)
+                            .build();
+                    TextInput timeunitUnitInput = TextInput.create("mac:to:unit", "TimeUnit.valueOf() Unit.", TextInputStyle.SHORT)
+                            .setRequired(true)
+                            .setPlaceholder("Units: DAYS | HOURS | MINUTES | SECONDS")
+                            .setRequiredRange(1, 50)
+                            .build();
 
-                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(
-                                ActionRow.of(reasonInput),
-                                ActionRow.of(timeunitInput),
-                                ActionRow.of(timeunitUnitInput)
-                        ).build();
-                        event.replyModal(modal).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        data[1] = ModerationCommandAction.TIMEOUT.getActionLabel();
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    }
+                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(
+                            ActionRow.of(reasonInput),
+                            ActionRow.of(timeunitInput),
+                            ActionRow.of(timeunitUnitInput)
+                    ).build();
+                    event.replyModal(modal).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    data[1] = ModerationCommandAction.TIMEOUT.getActionLabel();
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
                 }
-                if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-vb")) {
-                    /*ArrayList<String> permList = new ArrayList<>();
-                    permList.add(AdminRole);
-                    permList.add(OwnerRole);*/
-                    if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
-                        TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
-                                .setRequired(true)
-                                .setPlaceholder("Insert reason for moderating this user")
-                                .setRequiredRange(1, 2000)
-                                .build();
-                        Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
-                        event.replyModal(modal).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        data[1] = ModerationCommandAction.VIRTUALBAN.getActionLabel();
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    } else {
-                        EmbedBuilder emb = new EmbedBuilder();
-                        emb.setDescription("You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
-                        emb.setColor(new Color(255,89,89));
-                        emb.setFooter(footer);
-                        emb.setTimestamp(new Date().toInstant());
-                        event.editMessageEmbeds(emb.build()).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        emb.clear();
-                        emb = null;
-                        /*permList.clear();
-                        permList = null;*/
-                        return;
-                    }
+            }
+            if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("mac-vb")) {
+                /*ArrayList<String> permList = new ArrayList<>();
+                permList.add(AdminRole);
+                permList.add(OwnerRole);*/
+                if (jda.getGuildById(event.getGuild().getId()).getMember(event.getUser()).hasPermission(Permission.BAN_MEMBERS)) {
+                    TextInput reasonInput = TextInput.create("mac:reasoninput", "Reason for Moderation", TextInputStyle.PARAGRAPH)
+                            .setRequired(true)
+                            .setPlaceholder("Insert reason for moderating this user")
+                            .setRequiredRange(1, 2000)
+                            .build();
+                    Modal modal = Modal.create("mac:reason", "Reason for Moderation").addActionRows(ActionRow.of(reasonInput)).build();
+                    event.replyModal(modal).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    data[1] = ModerationCommandAction.VIRTUALBAN.getActionLabel();
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
+                } else {
+                    EmbedBuilder emb = new EmbedBuilder();
+                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
+                    emb.setColor(new Color(255,89,89));
+                    emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                    emb.setTimestamp(new Date().toInstant());
+                    event.editMessageEmbeds(emb.build()).queue();
+                    event.editSelectMenu(fakemenu).queue();
+                    emb.clear();
+                    emb = null;
+                    /*permList.clear();
+                    permList = null;*/
+                    return;
                 }
-            } catch (SQLException | ClassNotFoundException e) {
-                e.printStackTrace();
-                event.reply("Something went wrong!").setEphemeral(true).queue();
-                return;
             }
         }
-
-
         if (event.getSelectMenu().getId().equalsIgnoreCase("menu:modaction-confirm")) {
             try {
                 if (event.getSelectedOptions().get(0).getValue().equalsIgnoreCase("confirm-yes")) {
@@ -2000,214 +2639,10 @@ public class TwistedMC extends ListenerAdapter {
                     String reason = data[2];
                     String caseID = "#" + Main.generateRandomID(7);
                     if (data[1].equalsIgnoreCase("kick")) {
-                        ModerationCommandAction action = ModerationCommandAction.KICK;
-                        Main.insertCase(target,action,reason,event.getUser(), caseID, guildID.get(event.getUser()));
-                        WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason,caseID,guildID.get(event.getUser()));
-
-                        assert g != null;
-                        TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
-                        Webhook s = null;
-                        assert channel != null;
-                        for (Webhook h : channel.retrieveWebhooks().complete())
-                            if (h.getName().equals("MAB")) {
-                                s = h;
-                                break;
-                            }
-
-                        WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                        builder.setThreadFactory((job) -> {
-                            Thread thread = new Thread(job);
-                            thread.setName("Hello");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
-                        builder.setWait(true);
-                        club.minnced.discord.webhook.WebhookClient client = builder.build();
-
-                        client.send(log);
-
-                        MessageEmbed vbPM = Main.generateKickEmbed(reason,caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
-                        sendMessageKick(target,vbPM,guildID.get(event.getUser()));
-
-                        g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
-                        event.reply("Moderation Complete!").setEphemeral(true).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        return;
-                    }
-                    if (data[1].equalsIgnoreCase("ban")) {
-                        ModerationCommandAction action = ModerationCommandAction.BAN;
-                        Main.insertCase(target,action,reason,event.getUser(),caseID, guildID.get(event.getUser()));
-                        WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason,caseID,guildID.get(event.getUser()));
-
-                        assert g != null;
-                        TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
-                        Webhook s = null;
-                        assert channel != null;
-                        for (Webhook h : channel.retrieveWebhooks().complete())
-                            if (h.getName().equals("MAB")) {
-                                s = h;
-                                break;
-                            }
-
-                        WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                        builder.setThreadFactory((job) -> {
-                            Thread thread = new Thread(job);
-                            thread.setName("Hello");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
-                        builder.setWait(true);
-                        club.minnced.discord.webhook.WebhookClient client = builder.build();
-
-                        client.send(log);
-
-                        MessageEmbed vbPM = Main.generateBanEmbed(reason, caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
-                        sendMessage(target,vbPM, "2", guildID.get(event.getUser()));
-
-                        g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
-                        event.reply("Moderation Complete!").setEphemeral(true).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        return;
-                    }
-                    if (data[1].equalsIgnoreCase("warning")) {
-                        ModerationCommandAction action = ModerationCommandAction.WARN;
-                        Main.insertCase(target, action, data[2], event.getUser(), caseID, guildID.get(event.getUser()));
-                        WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason,caseID, guildID.get(event.getUser()));
-
-                        assert g != null;
-                        TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
-                        Webhook s = null;
-                        assert channel != null;
-                        for (Webhook h : channel.retrieveWebhooks().complete())
-                            if (h.getName().equals("MAB")) {
-                                s = h;
-                                break;
-                            }
-
-                        WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                        builder.setThreadFactory((job) -> {
-                            Thread thread = new Thread(job);
-                            thread.setName("Hello");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
-                        builder.setWait(true);
-                        club.minnced.discord.webhook.WebhookClient client = builder.build();
-
-                        client.send(log);
-
-                        MessageEmbed warn = Main.generatewarnEmbed(reason,caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
-                        sendMessage(target, warn);
-
-                        event.reply("Moderation Complete!").setEphemeral(true).queue();
-                        event.editSelectMenu(fakemenu).queue();
-                        return;
-                    }
-                    if (data[1].equalsIgnoreCase("ca-ban")) {
-                        g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
-
-                        WebhookEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(),caseID,guildID.get(event.getUser()));
-
-                        assert g != null;
-                        TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
-                        Webhook s = null;
-                        assert channel != null;
-                        for (Webhook h : channel.retrieveWebhooks().complete())
-                            if (h.getName().equals("MAB")) {
-                                s = h;
-                                break;
-                            }
-
-                        WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                        builder.setThreadFactory((job) -> {
-                            Thread thread = new Thread(job);
-                            thread.setName("Hello");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
-                        builder.setWait(true);
-                        club.minnced.discord.webhook.WebhookClient client = builder.build();
-
-                        client.send(log);
-
-                        Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID, guildID.get(event.getUser()));
-                        event.editSelectMenu(fakemenu).queue();
-                        event.reply("Moderation Complete!").setEphemeral(true).queue();
-                        return;
-                    }
-                    if (data[1].equalsIgnoreCase("underage-ban")) {
-                        g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
-                        WebhookEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(),caseID,guildID.get(event.getUser()));
-
-                        assert g != null;
-                        TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
-                        Webhook s = null;
-                        assert channel != null;
-                        for (Webhook h : channel.retrieveWebhooks().complete())
-                            if (h.getName().equals("MAB")) {
-                                s = h;
-                                break;
-                            }
-
-                        WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                        builder.setThreadFactory((job) -> {
-                            Thread thread = new Thread(job);
-                            thread.setName("Hello");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
-                        builder.setWait(true);
-                        club.minnced.discord.webhook.WebhookClient client = builder.build();
-
-                        client.send(log);
-
-                        Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser(),caseID, guildID.get(event.getUser()));
-
-                        MessageEmbed vbPM = Main.generateBanEmbed(ModerationCommandAction.UNDERAGE.getDefaultReason(), caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
-                        sendMessage(target,vbPM, "2", guildID.get(event.getUser()));
-
-                        event.editSelectMenu(fakemenu).queue();
-                        event.reply("Moderation Complete!").setEphemeral(true).queue();
-                        return;
-                    }
-                    if (data[1].equalsIgnoreCase("timeout")) {
-                        ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
-                        String[] todata = modTimeout.get(event.getUser().getId());
-                        String unit = todata[0];
-                        assert unit != null;
-                        assert todata[1] != null;
-                        unit.trim();
-                        int duration = Integer.parseInt(todata[1].trim());
-                        if (!unit.equalsIgnoreCase("seconds") && !unit.equalsIgnoreCase("minutes") && !unit.equalsIgnoreCase("hours") && !unit.equalsIgnoreCase("days")) {
-                                event.reply("Invalid TimeUnit! MAC Cancelled!").setEphemeral(true).queue();
-                                removeUserFromMACMaps(event.getUser().getId());
-                                return;
-                        }
-                        TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
-                        if (timeUnit == TimeUnit.DAYS && duration > 28 ||
-                                timeUnit == TimeUnit.HOURS && duration > 672 ||
-                                timeUnit == TimeUnit.MINUTES && duration > 40320 ||
-                                timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                            event.reply("Invalid Duration! MAC Cancelled!").queue();
-                            removeUserFromMACMaps(event.getUser().getId());
-                            return;
-                        }
                         try {
-                            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
-                            if (timeUnit.equals(TimeUnit.DAYS)) {
-                                calendar.add(Calendar.DATE,duration);
-                            }
-                            if (timeUnit.equals(TimeUnit.HOURS)) {
-                                calendar.add(Calendar.HOUR,duration);
-                            }
-                            if (timeUnit.equals(TimeUnit.MINUTES)) {
-                                calendar.add(Calendar.MINUTE,duration);
-                            }
-                            if (timeUnit.equals(TimeUnit.SECONDS)) {
-                                calendar.add(Calendar.SECOND,duration);
-                            }
-                            SimpleDateFormat format = new SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a 'EST'");
-                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, action,reason,caseID,"" + duration + " " + timeUnit,format.format(calendar.getTime()),guildID.get(event.getUser()));
+                            ModerationCommandAction action = ModerationCommandAction.KICK;
+                            Main.insertCase(target, action, reason, event.getUser(), caseID, guildID.get(event.getUser()));
+                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason, caseID, guildID.get(event.getUser()));
 
                             assert g != null;
                             TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
@@ -2230,59 +2665,459 @@ public class TwistedMC extends ListenerAdapter {
                             club.minnced.discord.webhook.WebhookClient client = builder.build();
 
                             client.send(log);
-                            Main.insertCase(target, action,data[2],event.getUser(), caseID, guildID.get(event.getUser()));
 
-                            User user = timeoutMember.get(event.getUser());
+                            MessageEmbed vbPM = Main.generateKickEmbed(reason, caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
+                            sendMessageKick(target, vbPM, guildID.get(event.getUser()));
 
-                            jda.getGuildById(guildID.get(event.getUser())).getMemberById(user.getId()).timeoutFor(Long.parseLong(String.valueOf(duration)), TimeUnit.valueOf(unit)).queue();
+                            g.kick(UserSnowflake.fromId(target.getId()), reason).queue();
+                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                        } catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("ban")) {
+                        try {
+                            ModerationCommandAction action = ModerationCommandAction.BAN;
+                            Main.insertCase(target, action, reason, event.getUser(), caseID, guildID.get(event.getUser()));
+                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason, caseID, guildID.get(event.getUser()));
 
-                            String durationOf = duration + " " + timeUnit;
+                            assert g != null;
+                            TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
+                            Webhook s = null;
+                            assert channel != null;
+                            for (Webhook h : channel.retrieveWebhooks().complete())
+                                if (h.getName().equals("MAB")) {
+                                    s = h;
+                                    break;
+                                }
 
-                            MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID,"" + duration + " " + timeUnit,format.format(calendar.getTime()), jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
-                            sendMessage(target,vbPM, "1", guildID.get(event.getUser()));
+                            WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                            builder.setThreadFactory((job) -> {
+                                Thread thread = new Thread(job);
+                                thread.setName("Hello");
+                                thread.setDaemon(true);
+                                return thread;
+                            });
+                            builder.setWait(true);
+                            club.minnced.discord.webhook.WebhookClient client = builder.build();
 
-                            event.reply("Moderation Completed!").setEphemeral(true).queue();
-                            removeUserFromMACMaps(event.getUser().getId());
+                            client.send(log);
+
+                            MessageEmbed vbPM = Main.generateBanEmbed(reason, caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
+                            sendMessage(target, vbPM, "2", guildID.get(event.getUser()));
+
+                            g.ban(UserSnowflake.fromId(target.getId()), 1, reason).queue();
+                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                        } catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("warning")) {
+                        try {
+                            ModerationCommandAction action = ModerationCommandAction.WARN;
+                            Main.insertCase(target, action, data[2], event.getUser(), caseID, guildID.get(event.getUser()));
+                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason, caseID, guildID.get(event.getUser()));
+
+                            assert g != null;
+                            TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
+                            Webhook s = null;
+                            assert channel != null;
+                            for (Webhook h : channel.retrieveWebhooks().complete())
+                                if (h.getName().equals("MAB")) {
+                                    s = h;
+                                    break;
+                                }
+
+                            WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                            builder.setThreadFactory((job) -> {
+                                Thread thread = new Thread(job);
+                                thread.setName("Hello");
+                                thread.setDaemon(true);
+                                return thread;
+                            });
+                            builder.setWait(true);
+                            club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                            client.send(log);
+
+                            MessageEmbed warn = Main.generatewarnEmbed(reason, caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
+                            sendMessage(target, warn);
+
+                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                        } catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("ca-ban")) {
+                        try {
+                            g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.SCAMBAN.getDefaultReason()).queue();
+
+                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), caseID, guildID.get(event.getUser()));
+
+                            assert g != null;
+                            TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
+                            Webhook s = null;
+                            assert channel != null;
+                            for (Webhook h : channel.retrieveWebhooks().complete())
+                                if (h.getName().equals("MAB")) {
+                                    s = h;
+                                    break;
+                                }
+
+                            WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                            builder.setThreadFactory((job) -> {
+                                Thread thread = new Thread(job);
+                                thread.setName("Hello");
+                                thread.setDaemon(true);
+                                return thread;
+                            });
+                            builder.setWait(true);
+                            club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                            client.send(log);
+
+                            Main.insertCase(target, ModerationCommandAction.SCAMBAN, ModerationCommandAction.SCAMBAN.getDefaultReason(), event.getUser(), caseID, guildID.get(event.getUser()));
+                            event.editSelectMenu(fakemenu).queue();
+                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        } catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("underage-ban")) {
+                        try {
+                            g.ban(UserSnowflake.fromId(target.getId()), 1, ModerationCommandAction.UNDERAGE.getDefaultReason()).queue();
+                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), caseID, guildID.get(event.getUser()));
+
+                            assert g != null;
+                            TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
+                            Webhook s = null;
+                            assert channel != null;
+                            for (Webhook h : channel.retrieveWebhooks().complete())
+                                if (h.getName().equals("MAB")) {
+                                    s = h;
+                                    break;
+                                }
+
+                            WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                            builder.setThreadFactory((job) -> {
+                                Thread thread = new Thread(job);
+                                thread.setName("Hello");
+                                thread.setDaemon(true);
+                                return thread;
+                            });
+                            builder.setWait(true);
+                            club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                            client.send(log);
+
+                            Main.insertCase(target, ModerationCommandAction.UNDERAGE, ModerationCommandAction.UNDERAGE.getDefaultReason(), event.getUser(), caseID, guildID.get(event.getUser()));
+
+                            MessageEmbed vbPM = Main.generateBanEmbed(ModerationCommandAction.UNDERAGE.getDefaultReason(), caseID, jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
+                            sendMessage(target, vbPM, "2", guildID.get(event.getUser()));
+
+                            event.editSelectMenu(fakemenu).queue();
+                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                        } catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                        return;
+                    }
+                    if (data[1].equalsIgnoreCase("timeout")) {
+                        try {
+                            ModerationCommandAction action = ModerationCommandAction.TIMEOUT;
+                            String[] todata = modTimeout.get(event.getUser().getId());
+                            String unit = todata[0];
+                            assert unit != null;
+                            assert todata[1] != null;
+                            unit.trim();
+                            int duration = Integer.parseInt(todata[1].trim());
+                            if (!unit.equalsIgnoreCase("seconds") && !unit.equalsIgnoreCase("minutes") && !unit.equalsIgnoreCase("hours") && !unit.equalsIgnoreCase("days")) {
+                                event.reply("**ERROR!** Invalid Timeunit! MAC Cancelled!").setEphemeral(true).queue();
+                                removeUserFromMACMaps(event.getUser().getId());
+                                return;
+                            }
+                            TimeUnit timeUnit = TimeUnit.valueOf(unit.toUpperCase());
+                            if (timeUnit == TimeUnit.DAYS && duration > 28 ||
+                                    timeUnit == TimeUnit.HOURS && duration > 672 ||
+                                    timeUnit == TimeUnit.MINUTES && duration > 40320 ||
+                                    timeUnit == TimeUnit.SECONDS && duration > 2419200) {
+                                event.reply("**ERROR!** Invalid Duration! MAC Cancelled!").queue();
+                                removeUserFromMACMaps(event.getUser().getId());
+                                return;
+                            }
+                            try {
+                                Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
+                                if (timeUnit.equals(TimeUnit.DAYS)) {
+                                    calendar.add(Calendar.DATE, duration);
+                                }
+                                if (timeUnit.equals(TimeUnit.HOURS)) {
+                                    calendar.add(Calendar.HOUR, duration);
+                                }
+                                if (timeUnit.equals(TimeUnit.MINUTES)) {
+                                    calendar.add(Calendar.MINUTE, duration);
+                                }
+                                if (timeUnit.equals(TimeUnit.SECONDS)) {
+                                    calendar.add(Calendar.SECOND, duration);
+                                }
+                                SimpleDateFormat format = new SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a 'EST'");
+                                WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason, caseID, "" + duration + " " + timeUnit, format.format(calendar.getTime()), guildID.get(event.getUser()));
+
+                                assert g != null;
+                                TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
+                                Webhook s = null;
+                                assert channel != null;
+                                for (Webhook h : channel.retrieveWebhooks().complete())
+                                    if (h.getName().equals("MAB")) {
+                                        s = h;
+                                        break;
+                                    }
+
+                                WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                                builder.setThreadFactory((job) -> {
+                                    Thread thread = new Thread(job);
+                                    thread.setName("Hello");
+                                    thread.setDaemon(true);
+                                    return thread;
+                                });
+                                builder.setWait(true);
+                                club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                                client.send(log);
+                                Main.insertCase(target, action, data[2], event.getUser(), caseID, guildID.get(event.getUser()));
+
+                                User user = timeoutMember.get(event.getUser());
+
+                                jda.getGuildById(guildID.get(event.getUser())).getMemberById(user.getId()).timeoutFor(Long.parseLong(String.valueOf(duration)), TimeUnit.valueOf(unit)).queue();
+
+                                String durationOf = duration + " " + timeUnit;
+
+                                MessageEmbed vbPM = Main.generateTimeoutEmbed(reason, caseID, "" + duration + " " + timeUnit, format.format(calendar.getTime()), jda.getGuildById(guildID.get(event.getUser())).getName(), jda.getGuildById(guildID.get(event.getUser())));
+                                sendMessage(target, vbPM, "1", guildID.get(event.getUser()));
+
+                                event.reply("Moderation Completed!").setEphemeral(true).queue();
+                                removeUserFromMACMaps(event.getUser().getId());
+                            } catch (InsufficientPermissionException e) {
+                                EmbedBuilder emb = new EmbedBuilder();
+                                emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                                emb.setColor(new Color(255, 89, 89));
+                                emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                                emb.setTimestamp(new Date().toInstant());
+                                event.editMessageEmbeds(emb.build()).queue();
+                                event.editSelectMenu(fakemenu).queue();
+                                emb.clear();
+                            } catch (UnsupportedOperationException e) {
+                                EmbedBuilder emb = new EmbedBuilder();
+                                emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                                emb.setColor(new Color(255, 89, 89));
+                                emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                                emb.setTimestamp(new Date().toInstant());
+                                event.editMessageEmbeds(emb.build()).queue();
+                                event.editSelectMenu(fakemenu).queue();
+                                emb.clear();
+                            } catch (SQLException e) {
+                                event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                                e.printStackTrace();
+                                throw new RuntimeException(e);
+                            } catch (ClassNotFoundException e) {
+                                event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                                e.printStackTrace();
+                                throw new RuntimeException(e);
+                            }
                             return;
                         } catch (NullPointerException e) {
                             e.printStackTrace();
                         }
                     }
                     if (data[1].equalsIgnoreCase("virtual-ban")) {
-                        ModerationCommandAction action = ModerationCommandAction.VIRTUALBAN;
-                        WebhookEmbed log = Main.generateModlog(event.getUser(),target,action,reason,caseID,guildID.get(event.getUser()));
+                        try {
+                            ModerationCommandAction action = ModerationCommandAction.VIRTUALBAN;
+                            WebhookEmbed log = Main.generateModlog(event.getUser(), target, action, reason, caseID, guildID.get(event.getUser()));
 
-                        assert g != null;
-                        TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
-                        Webhook s = null;
-                        assert channel != null;
-                        for (Webhook h : channel.retrieveWebhooks().complete())
-                            if (h.getName().equals("MAB")) {
-                                s = h;
-                                break;
-                            }
+                            assert g != null;
+                            TextChannel channel = g.getTextChannelById(Main.getLogChannel(g.getId()));
+                            Webhook s = null;
+                            assert channel != null;
+                            for (Webhook h : channel.retrieveWebhooks().complete())
+                                if (h.getName().equals("MAB")) {
+                                    s = h;
+                                    break;
+                                }
 
-                        WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                        builder.setThreadFactory((job) -> {
-                            Thread thread = new Thread(job);
-                            thread.setName("Hello");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
-                        builder.setWait(true);
-                        club.minnced.discord.webhook.WebhookClient client = builder.build();
+                            WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                            builder.setThreadFactory((job) -> {
+                                Thread thread = new Thread(job);
+                                thread.setName("Hello");
+                                thread.setDaemon(true);
+                                return thread;
+                            });
+                            builder.setWait(true);
+                            club.minnced.discord.webhook.WebhookClient client = builder.build();
 
-                        MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason,caseID );
-                        Main.insertCase(target,action,reason,event.getUser(),caseID, guildID.get(event.getUser()));
-                        sendMessage(target,vbPM, "3", guildID.get(event.getUser()));
-                        // VIRTUAL BAN PROCESS BEGIN
-                        Main.deSyncUser(target,GuildID,SyncRoleID,getJDA());
-                        Main.compileAndRemoveRoles(target,GuildID,getJDA());
-                        // VIRTUAL BAN PROCESS END
-                        client.send(log);
-                        g.addRoleToMember(UserSnowflake.fromId(target.getId()),g.getRoleById(VirtualBanRoleID)).queue();
-                        event.reply("Moderation Complete!").setEphemeral(true).queue();
-                        removeUserFromMACMaps(event.getUser().getId());
+                            MessageEmbed vbPM = Main.generateVirtualBanEmbed(reason, caseID);
+                            Main.insertCase(target, action, reason, event.getUser(), caseID, guildID.get(event.getUser()));
+                            sendMessage(target, vbPM, "3", guildID.get(event.getUser()));
+                            // VIRTUAL BAN PROCESS BEGIN
+                            Main.deSyncUser(target, GuildID, SyncRoleID, getJDA());
+                            Main.compileAndRemoveRoles(target, GuildID, getJDA());
+                            // VIRTUAL BAN PROCESS END
+                            client.send(log);
+                            g.addRoleToMember(UserSnowflake.fromId(target.getId()), g.getRoleById(VirtualBanRoleID)).queue();
+                            event.reply("Moderation Complete!").setEphemeral(true).queue();
+                            removeUserFromMACMaps(event.getUser().getId());
+                        } catch (InsufficientPermissionException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (UnsupportedOperationException e) {
+                            EmbedBuilder emb = new EmbedBuilder();
+                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setColor(new Color(255, 89, 89));
+                            emb.setFooter(footer, "https://twistedmcstudios.com/images/MABLogo.png");
+                            emb.setTimestamp(new Date().toInstant());
+                            event.editMessageEmbeds(emb.build()).queue();
+                            event.editSelectMenu(fakemenu).queue();
+                            emb.clear();
+                        } catch (SQLException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        } catch (ClassNotFoundException e) {
+                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
                         return;
                     }
                 }
@@ -2293,10 +3128,149 @@ public class TwistedMC extends ListenerAdapter {
                     removeUserFromMACMaps(event.getUser().getId());
                     return;
                 }
-            }  catch (SQLException | ClassNotFoundException | NullPointerException  | IllegalArgumentException e){
-                e.printStackTrace();
+            } catch (RuntimeException e) {
+                throw new RuntimeException(e);
             }
 
+        }
+    }
+
+    @Override
+    public void onMessageReceived(MessageReceivedEvent event) {
+        messageMap.put(event.getMessageIdLong(), event.getMessage());
+    }
+
+    @Override
+    public void onMessageDelete(MessageDeleteEvent event) {
+        try {
+            if (Main.messageLogSet(event.getGuild().getId())) {
+                boolean hasMember = messageMap.containsKey(event.getMessageIdLong());
+
+                Message message = messageMap.getOrDefault(event.getMessageIdLong(), null);
+                Member member = hasMember ? event.getGuild().getMemberById(message.getAuthor().getId()) : null;
+
+                if (member != null && member.getUser().isBot()) return;
+
+                MessageChannelUnion channel = event.getChannel();
+
+                TextChannel c = event.getGuild().getTextChannelById(Main.getMessageLog(event.getGuild().getId()));
+                Webhook s = null;
+                assert c != null;
+                for (Webhook h : c.retrieveWebhooks().complete())
+                    if (h.getName().equals("MAB")) {
+                        s = h;
+                        break;
+                    }
+
+                WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                builder.setThreadFactory((job) -> {
+                    Thread thread = new Thread(job);
+                    thread.setName("Hello");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+                builder.setWait(true);
+                club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                assert member != null;
+                WebhookEmbed embed = new WebhookEmbedBuilder()
+                        .setAuthor(new WebhookEmbed.EmbedAuthor(member.getUser().getAsTag(), member.getUser().getEffectiveAvatarUrl(), null))
+                        .setColor(13192011)
+                        .setDescription("**Message sent by " + member.getUser().getAsTag() + " deleted in " + channel.getAsMention() + "**")
+                        .addField(new WebhookEmbed.EmbedField(true, "Message:", message != null ? !message.getContentRaw().equals("") ? message.getContentRaw().length() > 1024 ? message.getContentRaw().substring(0, 1021) + "..." :
+                                message.getContentRaw() :
+                                "ERROR: Message had no content!" :
+                                "ERROR: Message was not in the cache!"))
+                        .setTimestamp(new Date().toInstant())
+                        .setFooter(new WebhookEmbed.EmbedFooter("User ID: " + (member != null ? member.getId() : "N/A"), "https://twistedmcstudios.com/images/MABLogo.png"))
+                        .build();
+
+                String logChannelID = null;
+                try {
+                    logChannelID = Main.getMessageLog(event.getGuild().getId());
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+
+                assert logChannelID != null;
+                TextChannel logChannel = event.getGuild().getTextChannelById(logChannelID);
+
+                if (logChannel != null) client.send(embed);
+
+
+                messageMap.remove(event.getMessageIdLong());
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void onMessageUpdate(MessageUpdateEvent event) {
+        try {
+            if (Main.messageLogSet(event.getGuild().getId())) {
+                if (event.getAuthor().isBot()) return;
+                Member member = event.getMember();
+
+                MessageChannelUnion channel = event.getChannel();
+
+                TextChannel c = event.getGuild().getTextChannelById(Main.getMessageLog(event.getGuild().getId()));
+                Webhook s = null;
+                assert c != null;
+                for (Webhook h : c.retrieveWebhooks().complete())
+                    if (h.getName().equals("MAB")) {
+                        s = h;
+                        break;
+                    }
+
+                WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                builder.setThreadFactory((job) -> {
+                    Thread thread = new Thread(job);
+                    thread.setName("Hello");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+                builder.setWait(true);
+                club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                String oldMessage = messageMap.containsKey(event.getMessageIdLong()) ? messageMap.get(event.getMessageIdLong()).getContentRaw() : "Message not in cache";
+                String newMessage = event.getMessage().getContentRaw();
+
+                WebhookEmbed embed = new WebhookEmbedBuilder()
+                        .setAuthor(new WebhookEmbed.EmbedAuthor(member.getUser().getAsTag(), member.getUser().getEffectiveAvatarUrl(), null))
+                        .setColor(16751616)
+                        .setDescription("**" + member.getUser().getAsTag() + " updated their message in " + channel.getAsMention() + "** [Jump to Message](" + event.getMessage().getJumpUrl() + ")")
+                        .addField(new WebhookEmbed.EmbedField(true, "Old message:", oldMessage.length() > 1024 ? oldMessage.substring(0, 1021) + "..." : oldMessage))
+                        .addField(new WebhookEmbed.EmbedField(true, "New message:", newMessage.length() > 1024 ? newMessage.substring(0, 1021) + "..." : newMessage))
+                        .setTimestamp(new Date().toInstant())
+                        .setFooter(new WebhookEmbed.EmbedFooter("User ID: " + (member != null ? member.getId() : "N/A"), "https://twistedmcstudios.com/images/MABLogo.png"))
+                        .build();
+
+                String logChannelID = null;
+                try {
+                    logChannelID = Main.getMessageLog(event.getGuild().getId());
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                assert logChannelID != null;
+                TextChannel logChannel = event.getGuild().getTextChannelById(logChannelID);
+
+                if (logChannel != null) client.send(embed);
+
+                // Update MessageCache if present, else add to cache
+                if (!messageMap.containsKey(event.getMessageIdLong())) messageMap.put(event.getMessageIdLong(), event.getMessage());
+                else messageMap.replace(event.getMessageIdLong(), event.getMessage());
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -2309,7 +3283,7 @@ public class TwistedMC extends ListenerAdapter {
             Main.insertSettings(guild.getId());
 
             guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage(
-                    "Thank you for adding me in **" + guild.getName() + "**! Please remember to set MAB settings with `/mab settings` or the bot will not work correctly!" +
+                    "Thank you for adding me in **" + guild.getName() + "**! Get started with `/mabsettings`" +
                             "\n\n" +
                             "Join our Discord if you need any bot support here: discord.gg/twistedmc").queue());
         } catch (SQLException e) {
@@ -2320,8 +3294,11 @@ public class TwistedMC extends ListenerAdapter {
 
         try {
             if (Main.isBanned(Long.parseLong(guild.getId()))) {
-                guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage("**SORRY!** Your guild, **" + guild.getName() + "** is currently suspended from using the MAB bot due to abuse and/or spamming.\n\nIf you believe this was " +
-                                "done in error, create a ticket by joining the discord below:\ndiscord.gg/twistedmc").queue());
+                guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage(
+                                "**SORRY!** Your guild, **" + guild.getName() + "** is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                                        "\n\nIf you believe this was done in error, create a ticket using the button below:")
+                        .setActionRow(Button.link("https://twistedmc.net/tickets/create/?ticket_form_id=5", "Submit a request"))
+                        .queue());
                 guild.leave().queue();
             }
         } catch (SQLException e) {
@@ -2330,6 +3307,15 @@ public class TwistedMC extends ListenerAdapter {
             throw new RuntimeException(e);
         }
 
+    }
+
+    public boolean isUrl(String url) {
+        try {
+            new URI(url);
+            return true;
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
 }

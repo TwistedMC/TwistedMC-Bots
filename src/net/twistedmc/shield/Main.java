@@ -629,7 +629,7 @@ public final class Main extends Plugin {
         WebhookEmbed embed = new WebhookEmbedBuilder()
                 .setTitle(new WebhookEmbed.EmbedTitle("Moderation Log", null))
                 .setColor(0xFFD966)
-                .setFooter(new WebhookEmbed.EmbedFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion(), null))
+                .setFooter(new WebhookEmbed.EmbedFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion(), "https://twistedmcstudios.com/images/MABLogo.png"))
                 .setTimestamp(new java.util.Date().toInstant())
                 .addField(new WebhookEmbed.EmbedField(true, "Moderator", author.getAsMention() + "\nID: " + author.getId() + ""))
                 .addField(new WebhookEmbed.EmbedField(true, "Moderated User", moderated.getAsMention() + "\nID: " + moderated.getId() + ""))
@@ -661,7 +661,7 @@ public final class Main extends Plugin {
         int cases = Main.getCases(guildID); if (cases == -1) { Cases += "?";} else { Cases += (cases + 1) + ""; }
 
         WebhookEmbed embed = new WebhookEmbedBuilder()
-                .setTitle(new WebhookEmbed.EmbedTitle("Moderation Log", null))
+                .setTitle(new WebhookEmbed.EmbedTitle("Moderation Log", "https://twistedmcstudios.com/images/MABLogo.png"))
                 .setColor(0xFFD966)
                 .setFooter(new WebhookEmbed.EmbedFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion(), null))
                 .setTimestamp(new java.util.Date().toInstant())
@@ -681,7 +681,6 @@ public final class Main extends Plugin {
         if (appealReason.equals("")) { appealReason = "Appealed by an Administrator."; }
         EmbedBuilder log = new EmbedBuilder();
         log.setTitle("Appeal Log | (" + caseID + ")");
-        log.setThumbnail("https://twistedmcstudios.com/images/TwistedMCSecurity.png");
         log.setColor(new Color(0, 255, 93));
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("**Moderator**","**`" + mod +"`**",true);
@@ -691,6 +690,24 @@ public final class Main extends Plugin {
         log.addField("**Punishment Reason**","**`" + caseID + "`**",true);
         log.addField("**Appeal Reason**","**`" + reason + "`**",false);
         return log.build();
+    }
+
+    public static boolean messageLogSet(String guildID) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM mabSettings WHERE guildID = '" + guildID + "'");
+        try {
+            while (result.next()) {
+                return result.getString("messageLogID") != null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return false;
     }
 
     public static boolean appealLinkSet(String guildID) throws SQLException, ClassNotFoundException {
@@ -831,6 +848,22 @@ public final class Main extends Plugin {
         }
     }
 
+    public static void updateMessageLog(String guildID, String appealLink) throws SQLException, ClassNotFoundException {
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement st = MySQL.openConnection().createStatement();
+        try {
+            st.executeUpdate("UPDATE `mabSettings` SET `messageLogID`='" + appealLink + "' WHERE guildID = '" + guildID + "'");
+        } catch (SQLException | NullPointerException e){
+            e.printStackTrace();
+        }  finally {
+            try {
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public static String getAppealLink(String guildID) throws SQLException, ClassNotFoundException {
         String appeallink = "";
         MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
@@ -848,6 +881,25 @@ public final class Main extends Plugin {
             MySQL.getConnection().close();
         }
         return appeallink;
+    }
+
+    public static String getMessageLog(String guildID) throws SQLException, ClassNotFoundException {
+        String messageLogID = "";
+        MySQL MySQL = new MySQL(sqlHostDM,sqlPortDM,sqlDbDM,sqlUserDM,sqlPwDM);
+        Statement statement = MySQL.openConnection().createStatement();
+        ResultSet result = statement.executeQuery("SELECT * FROM `mabSettings` WHERE guildID = '" + guildID + "'");
+        try {
+            while(result.next()){
+                messageLogID = result.getString("messageLogID");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            result.close();
+            statement.close();
+            MySQL.getConnection().close();
+        }
+        return messageLogID;
     }
 
     public static int getCases(String guildID) throws SQLException, ClassNotFoundException {
@@ -912,7 +964,7 @@ public final class Main extends Plugin {
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("Case ID",caseID,false);
         log.addField("Reason",reason,false);
-        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")", "https://twistedmcstudios.com/images/MABLogo.png");
         return log.build();
     }
 
@@ -927,7 +979,7 @@ public final class Main extends Plugin {
         log.addField("Duration",duration.toLowerCase(),true);
         log.addField("Timeout Expiry",SDF,false);
         log.addField("Reason",reason,false);
-        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")", "https://twistedmcstudios.com/images/MABLogo.png");
         return log.build();
     }
 
@@ -939,7 +991,7 @@ public final class Main extends Plugin {
         log.setColor(new Color(255, 97, 0));
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("Reason",reason,false);
-        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")", "https://twistedmcstudios.com/images/MABLogo.png");
         return log.build();
     }
 
@@ -953,7 +1005,7 @@ public final class Main extends Plugin {
         log.setTimestamp(new java.util.Date().toInstant());
         log.addField("Case ID",caseID,false);
         log.addField("Reason",reason,false);
-        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")");
+        log.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion() + " (" + guild.getIdLong() + ")", "https://twistedmcstudios.com/images/MABLogo.png");
         return log.build();
     }
 
@@ -968,7 +1020,7 @@ public final class Main extends Plugin {
         vb.setDescription("Sorry about that, maybe you can make an appeal. Otherwise, you'll no longer be able to participate in the TwistedMC Discord server."
                 + "\n\n__**Case ID:**__\n*`" + reason + "`*"
                 + "\n\n__**Reason for Virtual Ban:**__\n*`" + reason + "`*");
-        vb.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion());
+        vb.setFooter("© " + year + " TwistedMC Studios v" + BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion(), "https://twistedmcstudios.com/images/MABLogo.png");
 
         return vb.build();
     }
