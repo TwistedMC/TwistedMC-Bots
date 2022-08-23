@@ -48,6 +48,7 @@ public final class Main extends Plugin {
     public static String sqlPwDM = "d36562800c";
 
     public static Connection connection = null;
+    public static String botVersion = null;
     public static Statement statement;
 
     static Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("America/New York"));
@@ -55,7 +56,7 @@ public final class Main extends Plugin {
 
     @Override
     public void onEnable() {
-
+        botVersion = BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion();
         try {
             openConnection();
             statement = connection.createStatement();
