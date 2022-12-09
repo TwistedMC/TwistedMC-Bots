@@ -6,7 +6,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -40,20 +40,15 @@ public class Stats extends ListenerAdapter {
     }
 
     public void start() {
-        try {
-            this.jda = JDABuilder.createDefault(token).build();
-            jda.addEventListener(this);
-            jda.getPresence().setPresence(Activity.playing("Play.TwistedMC.Net"), false);
-            jda.upsertCommand("network", "View a player's Network stats.")
-                    .addOption(OptionType.STRING, "player", "Player Username", true).queue();
-            jda.upsertCommand("bedwars", "View a player's Bed Wars stats.")
-                    .addOption(OptionType.STRING, "player", "Player Username", true).queue();
-            jda.updateCommands().queue();
-            System.out.println("[SHIELD] Starting Bed Wars bot..");
-        } catch (LoginException err) {
-            System.out.println("[SHIELD] Failed to start Bed Wars Bot!");
-
-        }
+        this.jda = JDABuilder.createDefault(token).build();
+        jda.addEventListener(this);
+        jda.getPresence().setPresence(Activity.playing("Play.TwistedMC.Net"), false);
+        jda.upsertCommand("network", "View a player's Network stats.")
+                .addOption(OptionType.STRING, "player", "Player Username", true).queue();
+        jda.upsertCommand("bedwars", "View a player's Bed Wars stats.")
+                .addOption(OptionType.STRING, "player", "Player Username", true).queue();
+        jda.updateCommands().queue();
+        System.out.println("[SHIELD] Starting Bed Wars bot..");
     }
 
     @Override
