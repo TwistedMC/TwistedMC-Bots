@@ -46,10 +46,7 @@ import net.twistedmc.shield.Util.Utils;
 import net.twistedmc.shield.mab.commands.HelpCommand;
 import net.twistedmc.shield.mab.commands.InfoCommand;
 import net.twistedmc.shield.mab.commands.bwmarketplace.EmbedAdvertisementCommand;
-import net.twistedmc.shield.mab.commands.mabadmin.ActivateBetaCommand;
-import net.twistedmc.shield.mab.commands.mabadmin.BanGuildCommand;
-import net.twistedmc.shield.mab.commands.mabadmin.GuildInfoCommand;
-import net.twistedmc.shield.mab.commands.mabadmin.ShutdownCommand;
+import net.twistedmc.shield.mab.commands.mabadmin.*;
 import net.twistedmc.shield.mab.commands.moderation.ModerateCommand;
 import net.twistedmc.shield.mab.commands.moderation.PurgeCommand;
 import net.twistedmc.shield.mab.commands.moderation.SearchCaseCommand;
@@ -147,6 +144,7 @@ public class MAB extends ListenerAdapter {
         shardManager.addEventListener(new BanGuildCommand());
         shardManager.addEventListener(new GuildInfoCommand());
         shardManager.addEventListener(new ShutdownCommand());
+        shardManager.addEventListener(new EmbedCommand());
         // MODERATION LOG TOGGLE //
         shardManager.addEventListener(new ToggleAppealCommand());
         shardManager.addEventListener(new ToggleJoinLoggingCommand());
@@ -183,66 +181,66 @@ public class MAB extends ListenerAdapter {
         shardManager.retrieveApplicationInfo().getJDA().awaitReady();
 
         shardManager.getShards().forEach(jda -> {
-                jda.updateCommands()
-                        .addCommands(Commands.slash("help", "MAB help command")
-                                .setGuildOnly(true))
+            jda.updateCommands()
+                    .addCommands(Commands.slash("help", "MAB Help Command")
+                            .setGuildOnly(true))
 
-                        .addCommands(Commands.context(Command.Type.USER, "Moderate User")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS)))
+                    .addCommands(Commands.context(Command.Type.USER, "Moderate User")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS)))
 
-                        .addCommands(Commands.slash("music", "[BETA] Music main command")
-                                .setGuildOnly(true)
-                                .addSubcommands(new SubcommandData("play", "[BETA] Play music")
-                                        .addOption(OptionType.STRING, "url", "YouTube URL", true))
-                                .addSubcommands(new SubcommandData("join", "[BETA] Join current voice channel"))
-                                .addSubcommands(new SubcommandData("queue", "[BETA] View music queue"))
-                                .addSubcommands(new SubcommandData("nowplaying", "[BETA] View current song"))
-                                .addSubcommands(new SubcommandData("skip", "[BETA] Skip current song"))
-                                .addSubcommands(new SubcommandData("repeat", "[BETA] Toggle repeat mode"))
-                                .addSubcommands(new SubcommandData("clearqueue", "[BETA] Clear music queue"))
-                                .addSubcommands(new SubcommandData("stop", "[BETA] Disconnect MAB from channel and clear music queue")))
+                    .addCommands(Commands.slash("music", "Main Music Command")
+                            .setGuildOnly(true)
+                            .addSubcommands(new SubcommandData("play", "Play music")
+                                    .addOption(OptionType.STRING, "url", "YouTube URL", true))
+                            .addSubcommands(new SubcommandData("join", "Join current voice channel"))
+                            .addSubcommands(new SubcommandData("queue", "View music queue"))
+                            .addSubcommands(new SubcommandData("nowplaying", "[NEW] View current song"))
+                            .addSubcommands(new SubcommandData("skip", "[NEW] Skip current song"))
+                            .addSubcommands(new SubcommandData("repeat", "[NEW] Toggle repeat mode"))
+                            .addSubcommands(new SubcommandData("clearqueue", "Clear music queue"))
+                            .addSubcommands(new SubcommandData("stop", "Disconnect MAB from channel and clear music queue")))
 
-                        .addCommands(Commands.slash("mab", "MAB Main command")
-                                .setGuildOnly(true)
-                                .addSubcommands(new SubcommandData("info", "Bot Info")))
+                    .addCommands(Commands.slash("mab", "Main MAB Command")
+                            .setGuildOnly(true)
+                            .addSubcommands(new SubcommandData("info", "Bot Info")))
 
-                        .addCommands(Commands.slash("mabsettings", "MAB Settings command")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
-                                .addSubcommands(new SubcommandData("joinlog", "Set join log channel")
-                                        .addOption(OptionType.CHANNEL, "channel", "Channel for join logs", true))
-                                .addSubcommands(new SubcommandData("punishmentlog", "Set punishment log channel")
-                                        .addOption(OptionType.CHANNEL, "channel", "Channel for punishment logs", true))
-                                .addSubcommands(new SubcommandData("messagelog", "Set message log channel")
-                                        .addOption(OptionType.CHANNEL, "channel", "Channel for message logs", true))
-                                .addSubcommands(new SubcommandData("appealurl", "Set an appeal url for users to appeal at when they are timed out or banned")
-                                        .addOption(OptionType.STRING, "appeallink", "Appeal url", true))
-                                .addSubcommands(new SubcommandData("toggleappeal", "Toggle appeal url"))
-                                .addSubcommands(new SubcommandData("togglejoinlogs", "Toggle join logs"))
-                                .addSubcommands(new SubcommandData("togglemessagelogs", "Toggle message logs")))
+                    .addCommands(Commands.slash("mabsettings", "Customize MAB")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
+                            .addSubcommands(new SubcommandData("joinlog", "Set join log channel")
+                                    .addOption(OptionType.CHANNEL, "channel", "Channel for join logs", true))
+                            .addSubcommands(new SubcommandData("punishmentlog", "Set punishment log channel")
+                                    .addOption(OptionType.CHANNEL, "channel", "Channel for punishment logs", true))
+                            .addSubcommands(new SubcommandData("messagelog", "Set message log channel")
+                                    .addOption(OptionType.CHANNEL, "channel", "Channel for message logs", true))
+                            .addSubcommands(new SubcommandData("appealurl", "Set an appeal url for users to appeal at when they are timed out or banned")
+                                    .addOption(OptionType.STRING, "appeallink", "Appeal url", true))
+                            .addSubcommands(new SubcommandData("toggleappeal", "Toggle appeal url"))
+                            .addSubcommands(new SubcommandData("togglejoinlogs", "Toggle join logs"))
+                            .addSubcommands(new SubcommandData("togglemessagelogs", "Toggle message logs")))
 
-                        .addCommands(Commands.slash("moderate", "Moderate a user with different options")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
-                                .addOption(OptionType.USER, "user", "User to Moderate", true)
-                                .addOption(OptionType.BOOLEAN, "bypass", "Bypass the final confirmation?", false))
+                    .addCommands(Commands.slash("moderate", "Moderate a user with different options")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
+                            .addOption(OptionType.USER, "user", "User to Moderate", true)
+                            .addOption(OptionType.BOOLEAN, "bypass", "Bypass the final confirmation?", false))
 
-                        .addCommands(Commands.slash("timeout", "Timeout a user")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
-                                .addOption(OptionType.USER, "user", "User to Timeout", true))
+                    .addCommands(Commands.slash("timeout", "Quickly Timeout a user")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
+                            .addOption(OptionType.USER, "user", "User to Timeout", true))
 
-                        .addCommands(Commands.slash("searchcase", "View a discord punishment case")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
-                                .addOption(OptionType.STRING, "caseid", "Case ID of the punishment", true))
+                    .addCommands(Commands.slash("searchcase", "View a Discord Punishment Case")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS))
+                            .addOption(OptionType.STRING, "caseid", "Case ID of the punishment", true))
 
-                        .addCommands(Commands.slash("purge", "Purge messages")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE))
-                                .addOption(OptionType.STRING, "number", "Number of messages to delete", true))
-                        .queue();
+                    .addCommands(Commands.slash("purge", "Purge messages")
+                            .setGuildOnly(true)
+                            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE))
+                            .addOption(OptionType.STRING, "number", "Number of messages to delete", true))
+                    .queue();
         });
 
         Objects.requireNonNull(Objects.requireNonNull(jda.getGuildById(1001147856687742996L))).upsertCommand("bwmarketplace", "BW Marketplace Custom Commands")
@@ -276,6 +274,13 @@ public class MAB extends ListenerAdapter {
                         .addOption(OptionType.STRING, "guildid", "Guild ID", true))
                 .addSubcommands(new SubcommandData("maintenance","Put the bot into maintenance"))
                 .addSubcommands(new SubcommandData("shutdown","Shutdown MAB"))
+                .addSubcommands(new SubcommandData("embed","Create embed")
+                        .addOption(OptionType.STRING, "title", "Embed Title", true)
+                        .addOption(OptionType.STRING, "desc", "Embed Description", true)
+                        .addOption(OptionType.CHANNEL, "channel", "Channel to send embed in", true)
+                        .addOption(OptionType.BOOLEAN, "button", "Send button with embed", true)
+                        .addOption(OptionType.STRING, "buttontitle", "Button Title", true)
+                        .addOption(OptionType.STRING, "buttonurl", "Button URL", true))
                 .queue();
 
         completeOnline();
@@ -287,6 +292,7 @@ public class MAB extends ListenerAdapter {
         shardManager.shutdown();
         Arrays.stream(maps).forEach(HashMap::clear);
         macMaps.clear();
+        GuildInfoCommand.missingPermissions.clear();
     }
 
     public ShardManager getShardManager() {
@@ -355,7 +361,7 @@ public class MAB extends ListenerAdapter {
                     }
                 }
 
-                shardManager.setPresence(OnlineStatus.ONLINE, Activity.listening("/help"));
+                shardManager.setPresence(OnlineStatus.ONLINE, Activity.playing("Happy New Years!"));
 
                 /*if(completeOnline()) {
                     shardManager.setPresence(OnlineStatus.ONLINE, Activity.playing("/help"));
@@ -461,9 +467,10 @@ public class MAB extends ListenerAdapter {
             Guild guild = shardManager.getGuildById(String.valueOf(userGuildHashMap.get(event.getUser())));
 
             guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage(
-                            "<:danger:864013284054532136> **ALERT!** MAB is missing MANAGE_SERVER permission in **" + guild.getName() + "**! Please enable MANAGE_SERVER permission for MAB to prevent functionality issues.").queue());
+                    "**ALERT!** MAB is missing MANAGE_SERVER permission in **" + guild.getName() + "**! Please enable MANAGE_SERVER permission for MAB to prevent functionality issues.").queue());
 
             userGuildHashMap.remove(event.getUser());
+            GuildInfoCommand.missingPermissions.remove(event.getUser());
 
         }
     }
@@ -518,7 +525,7 @@ public class MAB extends ListenerAdapter {
             String timeunitValue = event.getValue("timeout:timeunit").getAsString();
 
             if (durationValue.matches("[a-zA-Z]+")){
-                event.reply("**ERROR!** Invalid Duration! Integer required!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Invalid Duration! Integer required!").setEphemeral(true).queue();
                 timeoutMember.remove(event.getUser());
                 guildID.remove(event.getUser());
                 return;
@@ -527,7 +534,7 @@ public class MAB extends ListenerAdapter {
             int duration = Integer.parseInt(durationValue);
 
             if (!timeunitValue.equalsIgnoreCase("seconds") && !timeunitValue.equalsIgnoreCase("minutes") && !timeunitValue.equalsIgnoreCase("hours") && !timeunitValue.equalsIgnoreCase("days")) {
-                event.reply("**ERROR!** Invalid Timeunit! MAC Cancelled!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Invalid Timeunit! MAC Cancelled!").setEphemeral(true).queue();
                 timeoutMember.remove(event.getUser());
                 guildID.remove(event.getUser());
                 return;
@@ -537,7 +544,7 @@ public class MAB extends ListenerAdapter {
                     timeUnit == TimeUnit.HOURS && duration > 672 ||
                     timeUnit == TimeUnit.MINUTES && duration > 40320 ||
                     timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                event.reply("**ERROR!** Invalid Duration! MAC Cancelled!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Invalid Duration! MAC Cancelled!").queue();
                 timeoutMember.remove(event.getUser());
                 guildID.remove(event.getUser());
                 return;
@@ -612,7 +619,7 @@ public class MAB extends ListenerAdapter {
                     MessageEmbed vbPM = Main.generateTimeoutEmbed(reasonValue,caseID,"" + duration + " " +timeUnit,format.format(calendar.getTime()), event.getJDA().getGuildById(guildID.get(event.getUser())).getName(), event.getJDA().getGuildById(guildID.get(event.getUser())), event.getJDA().getSelfUser().getEffectiveAvatarUrl());
                     sendMessage(timeoutMember.get(event.getUser()), vbPM, "1", guildID.get(event.getUser()));
 
-                    event.reply("Moderation Completed!").setEphemeral(true).queue();
+                    event.reply("<:squarechecksolid:1057753652602867813> Moderation Completed!").setEphemeral(true).queue();
                     timeoutMember.remove(event.getUser());
                     guildID.remove(event.getUser());
                 }
@@ -833,7 +840,7 @@ public class MAB extends ListenerAdapter {
                                 timeUnit == TimeUnit.HOURS && duration > 672 ||
                                 timeUnit == TimeUnit.MINUTES && duration > 40320 ||
                                 timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                            event.reply("**ERROR!** Invalid Duration! MAC Cancelled!").queue();
+                            event.reply("<:squareexclamationred:1058119075789803650> Invalid Duration! MAC Cancelled!").queue();
                             removeUserFromMACMaps(event.getUser().getId());
                             return;
                         }
@@ -889,7 +896,7 @@ public class MAB extends ListenerAdapter {
                             MessageEmbed vbPM = Main.generateTimeoutEmbed(reason,caseID,"" + duration + " " + timeUnit, format.format(calendar.getTime()), event.getJDA().getGuildById(guildID.get(event.getUser())).getName(), event.getJDA().getGuildById(guildID.get(event.getUser())), event.getJDA().getSelfUser().getEffectiveAvatarUrl());
                             sendMessage(target,vbPM, "1", guildID.get(event.getUser()));
 
-                            event.reply("Moderation Completed!").setEphemeral(true).queue();
+                            event.reply("<:squarechecksolid:1057753652602867813> Moderation Completed!").setEphemeral(true).queue();
                             removeUserFromMACMaps(event.getUser().getId());
                             return;
                         } catch (NullPointerException e) {
@@ -934,7 +941,7 @@ public class MAB extends ListenerAdapter {
                 }
             } catch (SQLException | ClassNotFoundException | NullPointerException | IllegalArgumentException e) {
                 e.printStackTrace();
-                event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
             }
         }
     }
@@ -1134,9 +1141,9 @@ public class MAB extends ListenerAdapter {
                         }
                         catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255,89,89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
@@ -1144,19 +1151,15 @@ public class MAB extends ListenerAdapter {
                         }
                         catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255,89,89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1169,7 +1172,7 @@ public class MAB extends ListenerAdapter {
                                 + "**Action:** " + ModerationCommandAction.SCAMBAN.getActionLabel() + " \n"
                                 + "**Reason:** " + ModerationCommandAction.SCAMBAN.getDefaultReason() + ""
                         );
-                        confirm_msg.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                        confirm_msg.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                         confirm_msg.setTimestamp(new Date().toInstant());
                         confirm_msg.setColor(new Color(253, 216, 1));
                         SelectMenu confirm_menu = SelectMenu.create("menu:modaction-confirm")
@@ -1191,9 +1194,9 @@ public class MAB extends ListenerAdapter {
                     }
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1251,9 +1254,9 @@ public class MAB extends ListenerAdapter {
                         }
                         catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255,89,89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
@@ -1261,19 +1264,15 @@ public class MAB extends ListenerAdapter {
                         }
                         catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255,89,89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1308,9 +1307,9 @@ public class MAB extends ListenerAdapter {
                     }
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1343,9 +1342,9 @@ public class MAB extends ListenerAdapter {
                     return;
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1377,9 +1376,9 @@ public class MAB extends ListenerAdapter {
                     return;
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.KICK_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.KICK_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1410,9 +1409,9 @@ public class MAB extends ListenerAdapter {
                     return;
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.BAN_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1461,9 +1460,9 @@ public class MAB extends ListenerAdapter {
                     return;
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1493,9 +1492,9 @@ public class MAB extends ListenerAdapter {
                     return;
                 } else {
                     EmbedBuilder emb = new EmbedBuilder();
-                    emb.setDescription("**ERROR!** You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
+                    emb.setDescription("<:squareexclamationred:1058119075789803650> You do not have permission to use this action!\n\n(" + Permission.MODERATE_MEMBERS.getName() + ")");
                     emb.setColor(new Color(255,89,89));
-                    emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                    emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                     emb.setTimestamp(new Date().toInstant());
                     event.editMessageEmbeds(emb.build()).queue();
                     event.editSelectMenu(fakemenu).queue();
@@ -1555,28 +1554,24 @@ public class MAB extends ListenerAdapter {
                             event.editSelectMenu(fakemenu).queue();
                         } catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
                         } catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1621,28 +1616,24 @@ public class MAB extends ListenerAdapter {
                             event.editSelectMenu(fakemenu).queue();
                         } catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
                         } catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1686,28 +1677,24 @@ public class MAB extends ListenerAdapter {
                             event.editSelectMenu(fakemenu).queue();
                         } catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
                         } catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1749,28 +1736,24 @@ public class MAB extends ListenerAdapter {
                             event.reply("Moderation Complete!").setEphemeral(true).queue();
                         } catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
                         } catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1815,28 +1798,24 @@ public class MAB extends ListenerAdapter {
                             event.reply("Moderation Complete!").setEphemeral(true).queue();
                         } catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
                         } catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -1852,7 +1831,7 @@ public class MAB extends ListenerAdapter {
                             unit.trim();
                             int duration = Integer.parseInt(todata[1].trim());
                             if (!unit.equalsIgnoreCase("seconds") && !unit.equalsIgnoreCase("minutes") && !unit.equalsIgnoreCase("hours") && !unit.equalsIgnoreCase("days")) {
-                                event.reply("**ERROR!** Invalid Timeunit! MAC Cancelled!").setEphemeral(true).queue();
+                                event.reply("<:squareexclamationred:1058119075789803650> Invalid Timeunit! MAC Cancelled!").setEphemeral(true).queue();
                                 removeUserFromMACMaps(event.getUser().getId());
                                 return;
                             }
@@ -1861,7 +1840,7 @@ public class MAB extends ListenerAdapter {
                                     timeUnit == TimeUnit.HOURS && duration > 672 ||
                                     timeUnit == TimeUnit.MINUTES && duration > 40320 ||
                                     timeUnit == TimeUnit.SECONDS && duration > 2419200) {
-                                event.reply("**ERROR!** Invalid Duration! MAC Cancelled!").queue();
+                                event.reply("<:squareexclamationred:1058119075789803650> Invalid Duration! MAC Cancelled!").queue();
                                 removeUserFromMACMaps(event.getUser().getId());
                                 return;
                             }
@@ -1917,32 +1896,28 @@ public class MAB extends ListenerAdapter {
                                 MessageEmbed vbPM = Main.generateTimeoutEmbed(reason, caseID, "" + duration + " " + timeUnit, format.format(calendar.getTime()), event.getJDA().getGuildById(guildID.get(event.getUser())).getName(), event.getJDA().getGuildById(guildID.get(event.getUser())), event.getJDA().getSelfUser().getEffectiveAvatarUrl());
                                 sendMessage(target, vbPM, "1", guildID.get(event.getUser()));
 
-                                event.reply("Moderation Completed!").setEphemeral(true).queue();
+                                event.reply("<:squarechecksolid:1057753652602867813> Moderation Completed!").setEphemeral(true).queue();
                                 removeUserFromMACMaps(event.getUser().getId());
                             } catch (InsufficientPermissionException e) {
                                 EmbedBuilder emb = new EmbedBuilder();
-                                emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                                emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                                 emb.setColor(new Color(255, 89, 89));
-                                emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                                emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                                 emb.setTimestamp(new Date().toInstant());
                                 event.editMessageEmbeds(emb.build()).queue();
                                 event.editSelectMenu(fakemenu).queue();
                                 emb.clear();
                             } catch (UnsupportedOperationException e) {
                                 EmbedBuilder emb = new EmbedBuilder();
-                                emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                                emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                                 emb.setColor(new Color(255, 89, 89));
-                                emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                                emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                                 emb.setTimestamp(new Date().toInstant());
                                 event.editMessageEmbeds(emb.build()).queue();
                                 event.editSelectMenu(fakemenu).queue();
                                 emb.clear();
-                            } catch (SQLException e) {
-                                event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                                e.printStackTrace();
-                                throw new RuntimeException(e);
-                            } catch (ClassNotFoundException e) {
-                                event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                            } catch (SQLException | ClassNotFoundException e) {
+                                event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                                 e.printStackTrace();
                                 throw new RuntimeException(e);
                             }
@@ -1992,28 +1967,24 @@ public class MAB extends ListenerAdapter {
                             removeUserFromMACMaps(event.getUser().getId());
                         } catch (InsufficientPermissionException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Insufficient Permissions!\n\n(" + e.getPermission().getName() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
                         } catch (UnsupportedOperationException e) {
                             EmbedBuilder emb = new EmbedBuilder();
-                            emb.setDescription("**ERROR!** Unsupported Operation!\n\n(" + e.getMessage() + ")");
+                            emb.setDescription("<:squareexclamationred:1058119075789803650> Unsupported Operation!\n\n(" + e.getMessage() + ")");
                             emb.setColor(new Color(255, 89, 89));
-                            emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                            emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                             emb.setTimestamp(new Date().toInstant());
                             event.editMessageEmbeds(emb.build()).queue();
                             event.editSelectMenu(fakemenu).queue();
                             emb.clear();
-                        } catch (SQLException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        } catch (ClassNotFoundException e) {
-                            event.reply("**ERROR!** Something went wrong!").setEphemeral(true).queue();
+                        } catch (SQLException | ClassNotFoundException e) {
+                            event.reply("<:squareexclamationred:1058119075789803650> Something went wrong!").setEphemeral(true).queue();
                             e.printStackTrace();
                             throw new RuntimeException(e);
                         }
@@ -2038,73 +2009,83 @@ public class MAB extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-        messageMap.put(event.getMessageIdLong(), event.getMessage());
+        if (!event.getMessage().getAuthor().isBot()) {
+            messageMap.put(event.getMessageIdLong(), event.getMessage());
+        }
     }
 
     @Override
     public void onMessageDelete(MessageDeleteEvent event) {
         try {
             if (Main.isEnabled("messagelogs", event.getGuild().getIdLong()) && Main.messageLogSet(event.getGuild().getId()) && !Main.isBanned(event.getGuild().getIdLong())) {
-                boolean hasMember = messageMap.containsKey(event.getMessageIdLong());
+                if (messageMap.containsKey(event.getMessageIdLong())) {
 
-                Message message = messageMap.getOrDefault(event.getMessageIdLong(), null);
-                Member member = hasMember ? event.getGuild().getMemberById(message.getAuthor().getId()) : null;
+                    boolean hasMember = messageMap.containsKey(event.getMessageIdLong());
 
-                if (member != null && member.getUser().isBot()) return;
+                    Message message = messageMap.getOrDefault(event.getMessageIdLong(), null);
+                    Member member = hasMember ? event.getGuild().getMemberById(message.getAuthor().getId()) : null;
 
-                MessageChannelUnion channel = event.getChannel();
+                    if (member != null && member.getUser().isBot()) return;
 
-                TextChannel c = event.getGuild().getTextChannelById(Main.getMessageLog(event.getGuild().getId()));
-                Webhook s = null;
-                assert c != null;
-                for (Webhook h : c.retrieveWebhooks().complete())
-                    if (h.getName().equals("MAB")) {
-                        s = h;
-                        break;
+                    MessageChannelUnion channel = event.getChannel();
+
+                    TextChannel c = event.getGuild().getTextChannelById(Main.getMessageLog(event.getGuild().getId()));
+                    Webhook s = null;
+                    assert c != null;
+                    for (Webhook h : c.retrieveWebhooks().complete())
+                        if (h.getName().equals("MAB")) {
+                            s = h;
+                            break;
+                        }
+
+                    WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
+                    builder.setThreadFactory((job) -> {
+                        Thread thread = new Thread(job);
+                        thread.setName("Hello");
+                        thread.setDaemon(true);
+                        return thread;
+                    });
+                    builder.setWait(true);
+                    club.minnced.discord.webhook.WebhookClient client = builder.build();
+
+                    assert member != null;
+
+                    WebhookMessageBuilder webhookMessageBuilder = new WebhookMessageBuilder();
+                    webhookMessageBuilder.setAvatarUrl(event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+
+                    WebhookEmbed embed = new WebhookEmbedBuilder()
+                            .setAuthor(new WebhookEmbed.EmbedAuthor(member != null ? member.getUser().getAsTag() : "...", member != null ? member.getUser().getEffectiveAvatarUrl() : event.getJDA().getSelfUser().getEffectiveAvatarUrl(), null))
+                            .setColor(13192011)
+                            .setDescription("**Message sent by " + member.getUser().getAsMention() + " deleted in " + channel.getAsMention() + "**")
+                            .addField(new WebhookEmbed.EmbedField(true, "Message:", message != null ? !message.getContentRaw().equals("") ? message.getContentRaw().length() > 1024 ? message.getContentRaw().substring(0, 500) + "..." :
+                                    message.getContentRaw() :
+                                    "ERROR: Message had no content!" :
+                                    "ERROR: Message was not in the cache!"))
+                            .setTimestamp(new Date().toInstant())
+                            .setFooter(new WebhookEmbed.EmbedFooter("User ID: " + (member != null ? member.getId() : "N/A"), event.getJDA().getSelfUser().getEffectiveAvatarUrl()))
+                            .build();
+
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Message sent by " + member.getUser().getAsTag() + " (" + member.getUser().getId() + ") deleted in " + channel.getAsMention() + ", " + event.getGuild().getId());
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Message content: " + message.getContentRaw());
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "--------------------------");
+
+                    String logChannelID = null;
+                    try {
+                        logChannelID = Main.getMessageLog(event.getGuild().getId());
+                    } catch (SQLException | ClassNotFoundException e) {
+                        throw new RuntimeException(e);
                     }
 
-                WebhookClientBuilder builder = new WebhookClientBuilder(s.getIdLong(), s.getToken());
-                builder.setThreadFactory((job) -> {
-                    Thread thread = new Thread(job);
-                    thread.setName("Hello");
-                    thread.setDaemon(true);
-                    return thread;
-                });
-                builder.setWait(true);
-                club.minnced.discord.webhook.WebhookClient client = builder.build();
+                    assert logChannelID != null;
+                    TextChannel logChannel = Objects.requireNonNull(event.getJDA().getGuildById(event.getGuild().getId())).getTextChannelById(logChannelID);
 
-                assert member != null;
-
-                WebhookMessageBuilder webhookMessageBuilder = new WebhookMessageBuilder();
-                webhookMessageBuilder.setAvatarUrl(event.getJDA().getSelfUser().getEffectiveAvatarUrl());
-
-                WebhookEmbed embed = new WebhookEmbedBuilder()
-                        .setAuthor(new WebhookEmbed.EmbedAuthor(member != null ? member.getUser().getAsTag() : "...", member != null ? member.getUser().getEffectiveAvatarUrl() : event.getJDA().getSelfUser().getEffectiveAvatarUrl(), null))
-                        .setColor(13192011)
-                        .setDescription("**Message sent by " + member.getUser().getAsMention() + " deleted in " + channel.getAsMention() + "**")
-                        .addField(new WebhookEmbed.EmbedField(true, "Message:", message != null ? !message.getContentRaw().equals("") ? message.getContentRaw().length() > 1024 ? message.getContentRaw().substring(0, 500) + "..." :
-                                message.getContentRaw() :
-                                "ERROR: Message had no content!" :
-                                "ERROR: Message was not in the cache!"))
-                        .setTimestamp(new Date().toInstant())
-                        .setFooter(new WebhookEmbed.EmbedFooter("User ID: " + (member != null ? member.getId() : "N/A"), event.getJDA().getSelfUser().getEffectiveAvatarUrl()))
-                        .build();
-
-                String logChannelID = null;
-                try {
-                    logChannelID = Main.getMessageLog(event.getGuild().getId());
-                } catch (SQLException | ClassNotFoundException e) {
-                    throw new RuntimeException(e);
+                    if (logChannel != null) client.send(webhookMessageBuilder.addEmbeds(embed).build());
                 }
-
-                assert logChannelID != null;
-                TextChannel logChannel = Objects.requireNonNull(event.getJDA().getGuildById(event.getGuild().getId())).getTextChannelById(logChannelID);
-
-                if (logChannel != null) client.send(webhookMessageBuilder.addEmbeds(embed).build());
 
 
                 messageMap.remove(event.getMessageIdLong());
             }
+
         } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -2154,12 +2135,15 @@ public class MAB extends ListenerAdapter {
                         .setFooter(new WebhookEmbed.EmbedFooter("User ID: " + (member != null ? member.getId() : "N/A"), event.getJDA().getSelfUser().getEffectiveAvatarUrl()))
                         .build();
 
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "Message sent by " + member.getUser().getAsTag() + " ("  + member.getUser().getId() + ") edited in " + channel.getAsMention() + ", " + event.getGuild().getId());
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "Old Message: " + oldMessage);
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "New Message: " + newMessage);
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "--------------------------");
+
                 String logChannelID = null;
                 try {
                     logChannelID = Main.getMessageLog(event.getGuild().getId());
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                } catch (ClassNotFoundException e) {
+                } catch (SQLException | ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }
                 assert logChannelID != null;
@@ -2171,9 +2155,7 @@ public class MAB extends ListenerAdapter {
                 if (!messageMap.containsKey(event.getMessageIdLong())) messageMap.put(event.getMessageIdLong(), event.getMessage());
                 else messageMap.replace(event.getMessageIdLong(), event.getMessage());
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
@@ -2225,6 +2207,11 @@ public class MAB extends ListenerAdapter {
                         .setFooter(new WebhookEmbed.EmbedFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl()))
                         .build();
 
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "Member joined " + event.getGuild().getId() + ": " + member.getUser().getAsTag() + " (" + member.getId() + ")");
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "Member Count: " + NumberFormat.getNumberInstance().format(event.getGuild().getMemberCount()));
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "Account Age: " + utils.toString());
+                BungeeCord.getInstance().getLogger().log(Level.INFO, "--------------------------");
+
                 String logChannelID = null;
                 try {
                     logChannelID = Main.getMessageLog(event.getGuild().getId());
@@ -2240,9 +2227,7 @@ public class MAB extends ListenerAdapter {
 
 
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
 
@@ -2284,7 +2269,7 @@ public class MAB extends ListenerAdapter {
 
                 WebhookMessageBuilder webhookMessageBuilder = new WebhookMessageBuilder();
                 webhookMessageBuilder.setAvatarUrl(event.getJDA().getSelfUser().getEffectiveAvatarUrl());
-                
+
                 if (member.getRoles().size() >= 1) {
                     StringBuilder stringBuilder = new StringBuilder();
                     for (Role roles : member.getRoles()) {
@@ -2304,6 +2289,12 @@ public class MAB extends ListenerAdapter {
                             .setTimestamp(new Date().toInstant())
                             .setFooter(new WebhookEmbed.EmbedFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl()))
                             .build();
+
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Member Left " + event.getGuild().getId() + ": " + member.getUser().getAsTag() + " (" + member.getId() + ")");
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Member Count: " + NumberFormat.getNumberInstance().format(event.getGuild().getMemberCount()));
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Date Joined: " + fmt.format(dt));
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Roles (" + member.getRoles().size() + "): " + stringBuilder.toString());
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "--------------------------");
                 } else if (member.getRoles().size() == 0) {
                     embed = new WebhookEmbedBuilder()
                             .setAuthor(new WebhookEmbed.EmbedAuthor("Member Left", member != null ? member.getUser().getEffectiveAvatarUrl() : event.getJDA().getSelfUser().getEffectiveAvatarUrl(), null))
@@ -2314,6 +2305,10 @@ public class MAB extends ListenerAdapter {
                             .setTimestamp(new Date().toInstant())
                             .setFooter(new WebhookEmbed.EmbedFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl()))
                             .build();
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Member Left " + event.getGuild().getId() + ": " + member.getUser().getAsTag() + " (" + member.getId() + ")");
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Member Count: " + NumberFormat.getNumberInstance().format(event.getGuild().getMemberCount()));
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "Date Joined: " + fmt.format(dt));
+                    BungeeCord.getInstance().getLogger().log(Level.INFO, "--------------------------");
                 }
 
                 String logChannelID = null;
@@ -2331,9 +2326,7 @@ public class MAB extends ListenerAdapter {
 
 
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
 
@@ -2354,9 +2347,7 @@ public class MAB extends ListenerAdapter {
                     "Thank you for adding me in **" + guild.getName() + "**! Get started with `/mabsettings`" +
                             "\n\n" +
                             "Join our Discord if you need any bot support here: https://discord.twistedmcstudios.com/").queue());
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
 
@@ -2390,67 +2381,59 @@ public class MAB extends ListenerAdapter {
     public void onUserContextInteraction(UserContextInteractionEvent event) {
         if (event.getName().equals("Moderate User")) {
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
                     return;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } catch (ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
             try {
                 if (Main.isMaintenance("MAB") && event.getGuild().getOwnerIdLong() != 478410064919527437L && event.getUser().getIdLong() != 478410064919527437L) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .queue();
-                    } catch (SQLException e) {
-                        throw new RuntimeException(e);
-                    } catch (ClassNotFoundException e) {
+                    } catch (SQLException | ClassNotFoundException e) {
                         throw new RuntimeException(e);
                     }
                     return;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } catch (ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
             try {
                 if (Main.appealEnabled(event.getGuild().getIdLong()) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && Main.logChannelSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mabsettings`! Appeal URL can be toggled on/off with `/mabsettings toggleappeal`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Appeal URL is not set! An admin must set it with `/mabsettings`! Appeal URL can be toggled on/off with `/mabsettings toggleappeal`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.appealEnabled(event.getGuild().getIdLong()) && !Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) ||
                         Main.appealEnabled(event.getGuild().getIdLong()) && !Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (Main.appealEnabled(event.getGuild().getIdLong()) && !Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (Main.appealEnabled(event.getGuild().getIdLong()) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !isUrl(Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())))) {
-                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } catch (ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
@@ -2460,14 +2443,14 @@ public class MAB extends ListenerAdapter {
             boolean memCanMute = memPerms.toString().contains(Permission.MODERATE_MEMBERS.name());
 
             if (!memCanMute) {
-                event.reply("**ERROR!** You do not have permission to use **/moderate**!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> You do not have permission to use **/moderate**!").setEphemeral(true).queue();
                 return;
             }
 
             User user = event.getTarget();
 
             if (user.isBot()) {
-                event.reply("**ERROR!** Cannot use on bot!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Cannot use on bot!").setEphemeral(true).queue();
                 return;
             }
 
@@ -2513,7 +2496,7 @@ public class MAB extends ListenerAdapter {
                 emb.setColor(new Color(253, 216, 1));
                 emb.setDescription("**Please select the moderation action command!**");
                 emb.setTimestamp(new Date().toInstant());
-                emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
             } else if (event.getGuild().getIdLong() != 549595806009786388L) {
                 SelectMenu menu = SelectMenu.create("menu:modaction")
@@ -2532,7 +2515,7 @@ public class MAB extends ListenerAdapter {
                 emb.setColor(new Color(253, 216, 1));
                 emb.setDescription("**Please select the moderation action command!**");
                 emb.setTimestamp(new Date().toInstant());
-                emb.setFooter(footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                emb.setFooter("Embed from MAB  •  " + footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
             }
         }

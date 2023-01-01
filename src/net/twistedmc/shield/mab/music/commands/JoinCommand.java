@@ -22,13 +22,13 @@ public class JoinCommand extends ListenerAdapter {
         if (Objects.equals(event.getSubcommandName(), "join")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
@@ -51,21 +51,17 @@ public class JoinCommand extends ListenerAdapter {
             try {
                 if (Main.isMaintenance("MAB")) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://discord.twistedmcstudios.com/", "Support Server")
                                         .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
                                 .queue();
-                    } catch (SQLException e) {
-                        throw new RuntimeException(e);
-                    } catch (ClassNotFoundException e) {
+                    } catch (SQLException | ClassNotFoundException e) {
                         throw new RuntimeException(e);
                     }
                     return;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } catch (ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
@@ -74,17 +70,17 @@ public class JoinCommand extends ListenerAdapter {
             assert memberVoiceState != null;
 
             if (event.getChannelType().isThread() || event.getChannelType().isAudio()) {
-                event.reply("**HOLD UP!** This command can only be done in text channels!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in text channels!").setEphemeral(true).queue();
                 return;
             }
 
             if (!Objects.requireNonNull(event.getMember().getVoiceState()).inAudioChannel()) {
-                event.reply("**HOLD UP!** You need to be in a voice channel!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> You need to be in a voice channel!").setEphemeral(true).queue();
                 return;
             }
 
             if (event.getGuild().getAudioManager().isConnected()) {
-                event.reply("**HOLD UP!** I'm already in a voice channel!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> I'm already in a voice channel!").setEphemeral(true).queue();
                 return;
             }
 

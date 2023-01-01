@@ -5,5 +5,6 @@ public enum PermissionLevel {
     MODERATOR,
     ADMIN,
     OWNER,
+    TRUSTED,
     CREATOR
 }

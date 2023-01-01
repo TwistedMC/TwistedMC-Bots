@@ -41,7 +41,7 @@ public class BanGuildCommand extends ListenerAdapter {
                 if (guild == null) {
                     event.deferReply().setContent("**HOLD UP!** There is no valid guild with the ID: `" + guildID + "`!").setEphemeral(true).queue();
                 } else {
-                    event.deferReply().setContent("Successfully banned guild with the ID: `" + guildID + "` from using MAB!").queue();
+                    event.deferReply().setContent("<:squarexmarksolid:1057753638329663598> Banned guild with the ID: `" + guildID + "` from using MAB!").queue();
 
                     try {
                         Objects.requireNonNull(guild.getDefaultChannel()).asTextChannel().sendMessage(Objects.requireNonNull(guild.getOwner()).getAsMention() + ", Your guild, **" + guild.getName() + "** has been suspended from using the MAB bot due to " +

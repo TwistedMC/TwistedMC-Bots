@@ -31,13 +31,13 @@ public class ModerateCommand extends ListenerAdapter {
 
         if (event.getName().equals("moderate")) {
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
@@ -60,43 +60,39 @@ public class ModerateCommand extends ListenerAdapter {
             try {
                 if (Main.isMaintenance("MAB")) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://discord.twistedmcstudios.com/", "Support Server")
                                         .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
                                 .queue();
-                    } catch (SQLException e) {
-                        throw new RuntimeException(e);
-                    } catch (ClassNotFoundException e) {
+                    } catch (SQLException | ClassNotFoundException e) {
                         throw new RuntimeException(e);
                     }
                     return;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } catch (ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
             try {
                 if (Main.appealEnabled(event.getGuild().getIdLong()) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && Main.logChannelSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Appeal URL is not set! An admin must set it with `/mabsettings`! Appeal URL can be toggled on/off with `/mabsettings toggleappeal`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Appeal URL is not set! An admin must set it with `/mabsettings`! Appeal URL can be toggled on/off with `/mabsettings toggleappeal`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (!Main.appealEnabled(event.getGuild().getIdLong()) && !Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) ||
                         Main.appealEnabled(event.getGuild().getIdLong()) && !Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Mod Log Channel is not set! An admin must set it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (Main.appealEnabled(event.getGuild().getIdLong()) && !Main.logChannelSet(String.valueOf(event.getGuild().getIdLong())) && !Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong()))) {
-                    event.deferReply().setContent("**HOLD UP!** Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Mod Log Channel & Appeal URL are not set! An admin must set them with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
 
                 if (Main.appealEnabled(event.getGuild().getIdLong()) && Main.appealLinkSet(String.valueOf(event.getGuild().getIdLong())) && !MAB.isUrl(Main.getAppealLink(String.valueOf(event.getGuild().getIdLong())))) {
-                    event.deferReply().setContent("**HOLD UP!** Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
+                    event.deferReply().setContent("<:squareexclamationred:1058119075789803650> Your Appeal URL is not a URL! Please fix it with `/mabsettings`!").setEphemeral(true).queue();
                     return;
                 }
             } catch (SQLException e) {
@@ -111,14 +107,14 @@ public class ModerateCommand extends ListenerAdapter {
             boolean memCanMute = memPerms.toString().contains(Permission.MODERATE_MEMBERS.name());
 
             if (!memCanMute) {
-                event.reply("**ERROR!** You do not have permission to use **/moderate**!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> You do not have permission to use **/moderate**!").setEphemeral(true).queue();
                 return;
             }
 
             User user = event.getOption("user").getAsUser();
 
             if (user.isBot()) {
-                event.reply("**ERROR!** Cannot use on bot!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Cannot use on bot!").setEphemeral(true).queue();
                 return;
             }
 
@@ -164,7 +160,7 @@ public class ModerateCommand extends ListenerAdapter {
                 emb.setColor(new Color(253, 216, 1));
                 emb.setDescription("**Please select the moderation action command!**");
                 emb.setTimestamp(new Date().toInstant());
-                emb.setFooter(MAB.footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                emb.setFooter("Embed from MAB  •  " + MAB.footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
             } else if (event.getGuild().getIdLong() != 549595806009786388L) {
                 SelectMenu menu = SelectMenu.create("menu:modaction")
@@ -183,10 +179,9 @@ public class ModerateCommand extends ListenerAdapter {
                 emb.setColor(new Color(253, 216, 1));
                 emb.setDescription("**Please select the moderation action command!**");
                 emb.setTimestamp(new Date().toInstant());
-                emb.setFooter(MAB.footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                emb.setFooter("Embed from MAB  •  " + MAB.footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                 event.replyEmbeds(emb.build()).addActionRow(menu).setEphemeral(true).queue();
             }
-            return;
         }
     }
 

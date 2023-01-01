@@ -17,6 +17,8 @@ import net.twistedmc.shield.Main;
 import net.twistedmc.shield.Util.Images;
 import net.twistedmc.shield.mab.MAB;
 import net.twistedmc.shield.mab.music.PlayerManager;
+import net.twistedmc.shield.mab.permissions.PermissionLevel;
+import net.twistedmc.shield.mab.permissions.Permissions;
 
 import javax.annotation.Nonnull;
 import java.awt.*;
@@ -34,13 +36,13 @@ public class PlayCommand extends ListenerAdapter {
         if (Objects.equals(event.getSubcommandName(), "play")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
@@ -63,39 +65,35 @@ public class PlayCommand extends ListenerAdapter {
             try {
                 if (Main.isMaintenance("MAB")) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://discord.twistedmcstudios.com/", "Support Server")
                                         .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
                                 .queue();
-                    } catch (SQLException e) {
-                        throw new RuntimeException(e);
-                    } catch (ClassNotFoundException e) {
+                    } catch (SQLException | ClassNotFoundException e) {
                         throw new RuntimeException(e);
                     }
                     return;
                 }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } catch (ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
             String url = event.getOption("url").getAsString();
 
             if (event.getChannelType().isThread() || event.getChannelType().isAudio()) {
-                event.reply("**HOLD UP!** This command can only be done in text channels!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in text channels!").setEphemeral(true).queue();
                 return;
             }
 
             if (!Objects.requireNonNull(event.getMember().getVoiceState()).inAudioChannel()) {
-                event.reply("**HOLD UP!** You need to be in a voice channel!").setEphemeral(true).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> You need to be in a voice channel!").setEphemeral(true).queue();
                 return;
             }
 
             if (event.getGuild().getAudioManager().isConnected()) {
                 if (event.getGuild().getAudioManager().getConnectedChannel().getIdLong() != event.getMember().getVoiceState().getChannel().getIdLong()) {
-                    event.reply("**HOLD UP!** You are not in the same voice channel as me!").setEphemeral(true).queue();
+                    event.reply("<:squareexclamationred:1058119075789803650> You are not in the same voice channel as me!").setEphemeral(true).queue();
                     return;
                 }
             }
@@ -122,7 +120,7 @@ public class PlayCommand extends ListenerAdapter {
                                 TimeUnit.MILLISECONDS.toSeconds(audioTrack.getInfo().length) -
                                         TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(audioTrack.getInfo().length))
                         ), true);
-                        eb.setFooter(MAB.footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                        eb.setFooter("Embed from MAB", "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                         eb.setTimestamp(new Date().toInstant());
 
                         event.replyEmbeds(eb.build()).queue();
@@ -146,7 +144,7 @@ public class PlayCommand extends ListenerAdapter {
                         eb.setTitle(":musical_note:  MAB Music Player");
                         eb.setColor(new Color(47,49,54));
                         eb.setDescription("Adding to queue: " + String.valueOf(tracks.size()) + " tracks from playlist `" + audioPlaylist.getName() + "`");
-                        eb.setFooter(MAB.footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                        eb.setFooter("Embed from MAB", "https://cdn.discordapp.com/emojis/1058317602050551838.png");
 
                         event.replyEmbeds(eb.build()).queue();
 

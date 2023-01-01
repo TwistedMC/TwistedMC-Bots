@@ -6,10 +6,9 @@ import com.google.gson.Gson;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
-import net.md_5.bungee.BungeeCord;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.twistedmc.shield.Util.ModerationCommandAction;
-import net.twistedmc.shield.accounts.Accounts;
+import net.twistedmc.shield.twistedmcbot.TwistedMCBot;
 import net.twistedmc.shield.accounts.SyncBot;
 import net.twistedmc.shield.stats.Stats;
 import net.twistedmc.shield.mab.MAB;
@@ -32,7 +31,7 @@ import java.util.logging.Level;
 public final class Main extends Plugin {
 
     private static SyncBot Sync = null;
-    private static Accounts Accounts = null;
+    private static TwistedMCBot TwistedMCBot = null;
     private static MAB MAB = null;
     private static Stats Stats = null;
 
@@ -60,7 +59,7 @@ public final class Main extends Plugin {
     @Override
     public void onEnable() {
 
-        botVersion = BungeeCord.getInstance().getPluginManager().getPlugin("SHIELD").getDescription().getVersion();
+        botVersion = "2.5.0";
 
         try {
             openConnection();
@@ -75,8 +74,8 @@ public final class Main extends Plugin {
         getProxy().getPluginManager().registerCommand(this, new VirtBanCommand());
         getProxy().getPluginManager().registerCommand(this, new StopBotCommand());
 
-        Accounts = new Accounts("Nzk3NzM1MjU3NTQ4NzgzNjM2.GUOuRZ.Uaiye-VWkg_zjPPLNUtTc1KQUYRtU2gRjFLz-Q");
-        Accounts.start();
+        TwistedMCBot = new TwistedMCBot("Nzk3NzM1MjU3NTQ4NzgzNjM2.GUOuRZ.Uaiye-VWkg_zjPPLNUtTc1KQUYRtU2gRjFLz-Q");
+        TwistedMCBot.start();
 
         Sync = new SyncBot("ODgwMDIyMDQzNjkxNzE2NjA4.G964no.8x_a3GR2_8URtwUc64qveGRJL8_EcRQTx02apU");
         Sync.start();
@@ -86,7 +85,7 @@ public final class Main extends Plugin {
             public void run() {
                 SyncBot.RunThings();
             }
-        }, 1, 30, TimeUnit.MINUTES);
+        }, 1, 2, TimeUnit.HOURS);
 
         MAB = new MAB("ODU5NjgyOTU4OTk3OTc5MTQ2.YNwQJQ.S3E4_VZh2VkHKUn20MKYmDvG57E");
         try {

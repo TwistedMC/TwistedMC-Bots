@@ -26,13 +26,13 @@ public class JoinLoggingCommand extends ListenerAdapter {
         if (Objects.equals(event.getSubcommandName(), "joinlog")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**ERROR!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
@@ -55,7 +55,7 @@ public class JoinLoggingCommand extends ListenerAdapter {
             try {
                 if (Main.isMaintenance("MAB")) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://discord.twistedmcstudios.com/", "Support Server")
                                         .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
@@ -83,7 +83,7 @@ public class JoinLoggingCommand extends ListenerAdapter {
 
                 textChannel.createWebhook("MAB").setAvatar(Icon.from(connection.getInputStream())).complete();
 
-                event.reply("Join Log Channel Set: " + event.getJDA().getTextChannelById(channelID.getIdLong()).getAsMention()).queue();
+                event.reply("<:squarechecksolid:1057753652602867813> Join Log Channel Set: " + event.getJDA().getTextChannelById(channelID.getIdLong()).getAsMention()).queue();
                 try {
                     Main.updateJoinLogChannel(event.getGuild().getId(), String.valueOf(channelID.getIdLong()));
                 } catch (SQLException e) {
@@ -94,7 +94,7 @@ public class JoinLoggingCommand extends ListenerAdapter {
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (InsufficientPermissionException e) {
-                event.reply("**ERROR!** Insufficient Permissions for channel " + e.getChannel(event.getJDA()).getAsMention() + "! Missing Permission: " + e.getPermission()).queue();
+                event.reply("<:squareexclamationred:1058119075789803650> Insufficient Permissions for channel " + e.getChannel(event.getJDA()).getAsMention() + "! Missing Permission: " + e.getPermission()).queue();
             }
             return;
         }

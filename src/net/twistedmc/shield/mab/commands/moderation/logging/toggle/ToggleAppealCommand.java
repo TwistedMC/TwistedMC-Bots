@@ -18,13 +18,13 @@ public class ToggleAppealCommand extends ListenerAdapter {
         if (Objects.equals(event.getSubcommandName(), "toggleappeal")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**HOLD UP!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
@@ -47,7 +47,7 @@ public class ToggleAppealCommand extends ListenerAdapter {
             try {
                 if (Main.isMaintenance("MAB")) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://discord.twistedmcstudios.com/", "Support Server")
                                         .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
@@ -68,7 +68,7 @@ public class ToggleAppealCommand extends ListenerAdapter {
             try {
                 if (Main.appealEnabled(event.getGuild().getIdLong())) {
                     Main.disableAppeal(event.getGuild().getId());
-                    event.reply("Appeal URL disabled!")
+                    event.reply("<:squarechecksolidred:1057965951489953802> Appeal URL disabled!")
                             .addActionRow(Button.link("https://twistedmcstudios.com/", "Help Center")
                                     .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
                             .addActionRow(Button.link("https://discord.twistedmcstudios.com/", "Support Server")
@@ -76,7 +76,7 @@ public class ToggleAppealCommand extends ListenerAdapter {
                             .queue();
                 } else {
                     Main.activateAppeal(event.getGuild().getId());
-                    event.reply("Appeal URL enabled!")
+                    event.reply("<:squarechecksolid:1057753652602867813> Appeal URL enabled!")
                             .addActionRow(Button.link("https://twistedmcstudios.com/", "Help Center")
                                     .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
                             .addActionRow(Button.link("https://discord.twistedmcstudios.com/", "Support Server")

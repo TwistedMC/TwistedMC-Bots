@@ -5,7 +5,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.plugin.Command;
-import net.twistedmc.shield.mab.MAB;
+import net.twistedmc.shield.twistedmcbot.TwistedMCBot;
 
 import java.awt.*;
 import java.util.Calendar;
@@ -44,7 +44,7 @@ public class UsernameVerificationCommand extends Command {
         // copy the command from the Accounts bot and login to play.twistedmc.net on Minecraft then execute the command!\n\nIf you have any trouble, let us know in <#912265941277106207>. Please note that we will not manually link your account under any circumstances.");
         eb.setFooter(footer);
 
-        TextChannel textChannel = Accounts.jda.getTextChannelById("797766853723684924");
+        TextChannel textChannel = TwistedMCBot.jda.getTextChannelById("797766853723684924");
         textChannel.sendMessageEmbeds(eb.build()).queue();
     }
 }

@@ -2,6 +2,7 @@ package net.twistedmc.shield.mab.commands.mabadmin;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -17,11 +18,13 @@ import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.Objects;
+import java.util.*;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class GuildInfoCommand extends ListenerAdapter {
+
+    public static List<User> missingPermissions = new ArrayList<>();
 
     @Override
     public void onSlashCommandInteraction(@Nonnull SlashCommandInteractionEvent event) {
@@ -43,6 +46,10 @@ public class GuildInfoCommand extends ListenerAdapter {
                 OffsetDateTime dt = guild.getTimeCreated();
                 DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd/yyyy hh:mm:ssa 'ET'");
 
+                missingPermissions.remove(event.getUser());
+                MAB.userGuildHashMap.remove(event.getUser());
+                MAB.userGuildHashMap.put(event.getUser(), guildID);
+
                 EmbedBuilder eb = new EmbedBuilder();
 
                 eb.setTitle(guild.getName() + " Info", null);
@@ -54,10 +61,8 @@ public class GuildInfoCommand extends ListenerAdapter {
                 try {
                     eb.addField("Invite URL:", guild.retrieveInvites().complete().get(0).getUrl(), true);
                 } catch (InsufficientPermissionException e) {
-                    event.reply("**HOLD UP!** MAB does not have MANAGE_SERVER Permission in this Guild!").setEphemeral(true)
-                            .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.secondary("sendmanageserverdm", "Notify Guild Owner Missing Permission"))
-                            .queue();
-                    return;
+                    missingPermissions.add(event.getUser());
+                    eb.addField("Invite URL:", "Missing MANAGE_SERVER permission", true);
                 }
 
                 eb.addField("Date Created:", fmt.format(dt), true);
@@ -84,17 +89,19 @@ public class GuildInfoCommand extends ListenerAdapter {
                 }
 
 
-                eb.setFooter(MAB.footer, event.getJDA().getSelfUser().getEffectiveAvatarUrl());
+                eb.setFooter("Embed from MAB  •  " + MAB.footer, "https://cdn.discordapp.com/emojis/1058317602050551838.png");
                 eb.setTimestamp(new Date().toInstant());
 
-                event.replyEmbeds(eb.build()).queue();
-
-
+                if (missingPermissions.contains(event.getUser())) {
+                    event.replyEmbeds(eb.build())
+                            .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.secondary("sendmanageserverdm", "Notify Guild Owner Missing Permission"))
+                            .queue();
+                } else {
+                    event.replyEmbeds(eb.build()).queue();
+                }
             } else {
                 event.reply("**HOLD UP!** You do not have permission to do this!").queue();
-                return;
             }
-            return;
         }
     }
 

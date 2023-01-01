@@ -2,18 +2,43 @@ package net.twistedmc.shield.mab.permissions;
 
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.User;
 
 public class Permissions {
-    public static boolean checkLevel(Member member, PermissionLevel level) {
+    public static boolean checkLevel(User user, Member member, PermissionLevel level) {
         switch (level) {
             case CREATOR:
-                return member.getUser().getId().equals("478410064919527437") || member.getUser().getId().equals("208757906428919808");
+                if (user.getId().equals("478410064919527437")) {
+                    return true;
+                } else if (user.getId().equals("208757906428919808")) {
+                    return true;
+                } else {
+                    return false;
+                }
+            case TRUSTED:
+                if (user.getId().equals("898439795490033714")) {
+                    return true;
+                } else {
+                    return false;
+                }
             case OWNER:
-                return member.isOwner();
+                if (member.isOwner()) {
+                    return true;
+                } else {
+                    return false;
+                }
             case ADMIN:
-                return member.hasPermission(Permission.ADMINISTRATOR);
+                if (member.hasPermission(Permission.ADMINISTRATOR)) {
+                    return true;
+                } else {
+                    return false;
+                }
             case MODERATOR:
-                return member.hasPermission(Permission.MODERATE_MEMBERS);
+                if (member.hasPermission(Permission.MODERATE_MEMBERS)) {
+                    return true;
+                } else {
+                    return false;
+                }
             case EVERYONE:
                 return true;
             default:

@@ -26,13 +26,13 @@ public class AppealURLCommand extends ListenerAdapter {
         if (Objects.equals(event.getSubcommandName(), "appealurl")) {
 
             if (!event.isFromGuild()) {
-                event.reply("**ERROR!** This command can only be done in guilds!").queue();
+                event.reply("<:squareexclamationred:1058119075789803650> This command can only be done in guilds!").queue();
                 return;
             }
 
             try {
                 if (Main.isBanned(event.getGuild().getIdLong())) {
-                    event.reply("**HOLD UP!** This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
+                    event.reply("<:squareexclamationred:1058119075789803650> This guild is currently suspended from using the MAB bot due to abuse and/or spamming." +
                                     "\n\nIf you believe this was done in error, create a ticket using the button below:")
                             .addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Submit a request"))
                             .queue();
@@ -55,7 +55,7 @@ public class AppealURLCommand extends ListenerAdapter {
             try {
                 if (Main.isMaintenance("MAB")) {
                     try {
-                        event.reply("**HOLD UP!** This bot is currently under maintenance!\n\nFor More Information, click the button below:")
+                        event.reply("<:squareexclamationred:1058119075789803650> MAB is currently undergoing maintenance!\n\nFor More Information, click the button below:")
                                 .addActionRow(Button.link(Main.getStatusLink("MAB"), "View Status Updates"))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://discord.twistedmcstudios.com/", "Support Server")
                                         .withEmoji(Emoji.fromFormatted("<:information2:1050337061347000340>")))
@@ -75,7 +75,7 @@ public class AppealURLCommand extends ListenerAdapter {
 
             try {
                 if (!Main.appealEnabled(event.getGuild().getIdLong())) {
-                    event.reply("**ERROR!** Appeal URL is disabled! Enable it with `/mabsettings toggleappeal`!").queue();
+                    event.reply("<:squareexclamationred:1058119075789803650> Appeal URL is disabled! Enable it with `/mabsettings toggleappeal`!").queue();
                     return;
                 }
             } catch (SQLException e) {
@@ -87,14 +87,14 @@ public class AppealURLCommand extends ListenerAdapter {
             String appealLink = event.getOption("appeallink").getAsString();
 
             if (!MAB.isUrl(appealLink)) {
-                event.reply("**ERROR!** Appeal URL is not a valid URL!").queue();
+                event.reply("<:squarexmarksolid:1057753638329663598> Appeal URL is not a valid URL!").queue();
                 return;
             }
             try {
                 URLConnection connection = new URL(event.getJDA().getSelfUser().getEffectiveAvatarUrl()).openConnection();
                 connection.setRequestProperty("User-Agent", "Bot MAB");
 
-                event.reply("Appeal URL Set: " + appealLink).queue();
+                event.reply("<:squarechecksolid:1057753652602867813> Appeal URL Set: " + appealLink).queue();
                 try {
                     Main.updateAppealLink(event.getGuild().getId(), appealLink);
                 } catch (SQLException e) {

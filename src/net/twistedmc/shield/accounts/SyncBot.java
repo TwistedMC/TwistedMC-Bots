@@ -1,6 +1,7 @@
 package net.twistedmc.shield.accounts;
 
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
@@ -8,17 +9,21 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.md_5.bungee.BungeeCord;
 
 import javax.annotation.Nonnull;
+import java.awt.*;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+
+import static net.twistedmc.shield.accounts.SyncBotListener.year;
 
 public class SyncBot extends ListenerAdapter{
 
@@ -62,8 +67,43 @@ public class SyncBot extends ListenerAdapter{
 
         for (Member member : Objects.requireNonNull(jda.getGuildById("797776730857013259")).getMemberCache()) {
             if (!member.getUser().isBot()) {
-                SyncBot.syncName(member.getUser(), member, "797776730857013259", jda);
+                SyncBot.syncRolesNames(member.getUser(), member, "797776730857013259", jda);
             }
+        }
+    }
+
+    public static void sendMessage(User user, String content) {
+        user.openPrivateChannel()
+                .flatMap(channel -> channel.sendMessage(content))
+                .queue();
+    }
+
+    public static void sendMessage(User user, MessageEmbed embed) {
+        user.openPrivateChannel()
+                .flatMap(channel -> channel.sendMessageEmbeds(embed).addActionRow(Button.link("https://discord.gg/twistedmc", "Rejoin")).addActionRow(Button.link("https://twistedmcstudios.com/tickets/create/", "Contact support")))
+                .queue();
+    }
+
+    public static MessageEmbed generateMessageEmbed(String reason, String url) {
+        EmbedBuilder log = new EmbedBuilder();
+        log.setTitle("You've been automatically kicked from all of the TwistedMC Staff Discord servers!");
+        log.setColor(new Color(175, 66, 0));
+        log.setTimestamp(new java.util.Date().toInstant());
+        log.addField("Reason", reason, false);
+        log.setFooter("© " + year + " TwistedMC Studios", url);
+        return log.build();
+    }
+
+    public static void clearRoles(@Nonnull User user, @Nonnull Member member, @Nonnull String guildID, @Nonnull JDA jda) {
+
+        if (user.isBot()) {
+            return;
+        }
+
+        Objects.requireNonNull(jda.getGuildById(guildID)).modifyMemberRoles(member, null, member.getRoles()).queue();
+
+        if (Objects.requireNonNull(jda.getGuildById(guildID)).getSelfMember().canInteract(member)) {
+            Objects.requireNonNull(Objects.requireNonNull(jda.getGuildById(guildID)).getMember(user)).modifyNickname("Unlinked_Player").queue();
         }
     }
 

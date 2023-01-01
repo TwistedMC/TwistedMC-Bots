@@ -42,7 +42,7 @@ public class ActivateBetaCommand extends ListenerAdapter {
                         throw new RuntimeException(e);
                     }
 
-                    event.deferReply().setContent("Successfully activated BETA features for guild with the ID: `" + guildID + "`!").queue();
+                    event.deferReply().setContent("<:squarexmarksolid:1057753638329663598> Successfully activated BETA features for guild with the ID: `" + guildID + "`!").queue();
 
                     guild.getOwner().getUser().openPrivateChannel().queue(pc -> pc.sendMessage(
                             "**WOO HOO!** BETA features have been activated for your guild, **" + guild.getName() + "**!").queue());
