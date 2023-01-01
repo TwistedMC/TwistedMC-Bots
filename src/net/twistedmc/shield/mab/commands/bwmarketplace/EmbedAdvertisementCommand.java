@@ -337,7 +337,7 @@ public class EmbedAdvertisementCommand extends ListenerAdapter {
                                         .withEmoji(Emoji.fromFormatted("<:builtbybitemoji:1057952306391433306>")))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://twistedmcstudios.com/mab/links/?link=" + event.getOption("polymart_link").getAsString(), "Download (Polymart)")
                                         .withEmoji(Emoji.fromFormatted("<:polymartemoji:1057952307364511775>")))
-                                .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://twistedmcstudios.com/mab/links/?link=" + event.getOption("spigot_link").getAsString(), "Download (Spigot)")
+                                .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://twistedmcstudios.com/", "Download (Spigot)")
                                         .asDisabled()
                                         .withEmoji(Emoji.fromFormatted("<:spigotemoji:1057952308627001405>")))
                                 .addActionRow(net.dv8tion.jda.api.interactions.components.buttons.Button.link("https://twistedmcstudios.com", "Support or Docs")
